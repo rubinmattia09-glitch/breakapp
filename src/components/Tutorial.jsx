@@ -1,15 +1,15 @@
 import React, { useState, useLayoutEffect, useEffect, useRef } from 'react';
 import { MascotBubble } from './Mascot.jsx';
 
-// Passi del tour: ognuno punta a un elemento di "Il tuo percorso" con una freccia.
+// Passi del tour del "percorso": ognuno punta a un elemento con una freccia.
 // `line` è la battuta parlata da Cuorino, `mood` la sua espressione.
-const STEPS = [
+const PERCORSO_STEPS = [
   {
-    selector: '.ring',
+    selector: '.streak-box',
     placement: 'left',
-    title: 'La metro di guarigione',
-    text: 'Questo anello mostra a che punto sei: si riempie man mano che completi le attività. Non è una gara, vai al tuo ritmo.',
-    line: 'Ciao! Sono Cuorino, e ti accompagno io. Guarda: questa è la tua metro di guarigione!',
+    title: 'Obiettivo e streak',
+    text: 'Qui vedi l’obiettivo che ti sei dato/a e quanti giorni di fila stai facendo gli esercizi. Non è una gara: ogni giorno conta.',
+    line: 'Ciao! Sono Cuorino, e ti accompagno io. Guarda: questo è il tuo obiettivo e la tua streak!',
     mood: 'cheer',
   },
   {
@@ -24,39 +24,67 @@ const STEPS = [
     selector: '.attivita li:first-child .check',
     placement: 'right',
     title: 'Spunta le attività fatte',
-    text: 'Clicca sul cerchio per segnare un’attività come completata: si colora e la spunta appare al centro. Così la metro sale piano piano.',
-    line: 'Spunta le attività qui: si colorano e la metro sale. Satisfying, vero?',
+    text: 'Clicca sul cerchio per segnare un’attività come completata: si colora e la spunta appare al centro.',
+    line: 'Spunta le attività qui: si colorano e la streak sale. Satisfying, vero?',
     mood: 'cheer',
   },
   {
     selector: '.ghost.small',
     placement: 'bottom',
-    title: 'Parla con uno psicologo',
-    text: 'Ogni tappa ti suggerisce uno psicologo AI. Tocca qui per aprire subito la chat con quello giusto per l’argomento.',
-    line: 'Serve parlare con qualcuno? Tocca qui per lo psicologo giusto.',
+    title: 'Parla con un assistente',
+    text: 'Ogni tappa ti suggerisce un assistente e guida AI. Tocca qui per aprire subito la chat con quello giusto per l’argomento.',
+    line: 'Serve parlare con qualcuno? Tocca qui per l’assistente giusto.',
     mood: 'think',
   },
   {
     selector: '.actions .primary',
     placement: 'top',
     title: 'La chat è sempre qui',
-    text: 'In qualsiasi momento puoi aprire la chat con uno dei tre psicologi, rifare il questionario o ricominciare da zero da qui.',
+    text: 'In qualsiasi momento puoi aprire la chat con uno dei tre assistenti, rifare il questionario o ricominciare da zero da qui.',
     line: 'La chat è sempre a portata di clic. Io resto qui a fare il tifo. Ci sei?',
     mood: 'happy',
   },
 ];
 
-export default function Tutorial({ onClose }) {
+// Passi del tour della CHAT: spiega che non sono dottori ma assistenti/guide AI.
+export const CHAT_STEPS = [
+  {
+    selector: '.persona-bar',
+    placement: 'bottom',
+    title: 'Non sono dottori',
+    text: 'Elena, Marco e Sofia sono assistenti e guide create dall’intelligenza artificiale. Non sono psicologi né psichiatri: non fanno diagnosi né prescrizioni. Sono qui per starti vicino quando vuoi parlare.',
+    line: 'Ciao! Sono Cuorino. Prima di tutto una cosa importante: loro non sono dottori!',
+    mood: 'think',
+  },
+  {
+    selector: '.composer',
+    placement: 'top',
+    title: 'Scrivi come ti senti',
+    text: 'Scrivi qui sotto, o tocca una delle frasi d’esempio. La conversazione resta solo nel tuo dispositivo: nessun dato lascia il tuo telefono o computer.',
+    line: 'Scrivi pure come stai. Quello che dici resta solo qui, sul tuo dispositivo.',
+    mood: 'happy',
+  },
+  {
+    selector: '.mem-btn',
+    placement: 'left',
+    title: 'Memoria locale',
+    text: 'Tocca qui per far ricordare all’assistente i punti importanti delle vostre chiacchierate. Tutto resta sul tuo dispositivo: puoi cancellarlo quando vuoi.',
+    line: 'Vuoi che l’assistente si ricordi di te? Premi qui: la memoria resta solo sul tuo dispositivo.',
+    mood: 'cheer',
+  },
+];
+
+export default function Tutorial({ steps = PERCORSO_STEPS, onClose }) {
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState(null);
   const [tip, setTip] = useState({ w: 300, h: 150 });
   const tipRef = useRef(null);
 
   const measure = () => {
-    const el = document.querySelector(STEPS[step].selector);
+    const el = document.querySelector(steps[step].selector);
     if (!el) {
       // se l'elemento non c'è, salta al passo successivo
-      setStep((s) => (s < STEPS.length - 1 ? s + 1 : s));
+      setStep((s) => (s < steps.length - 1 ? s + 1 : s));
       return;
     }
     el.scrollIntoView({ block: 'center', behavior: 'auto' });
@@ -89,7 +117,7 @@ export default function Tutorial({ onClose }) {
   const gap = 16;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const { placement, title, text, line, mood } = STEPS[step];
+  const { placement, title, text, line, mood } = steps[step];
   const sr = {
     top: rect.top - pad,
     left: rect.left - pad,
@@ -122,7 +150,7 @@ export default function Tutorial({ onClose }) {
   left = Math.min(Math.max(left, 10), vw - tip.w - 10);
   top = Math.min(Math.max(top, 10), vh - tip.h - 10);
 
-  const total = STEPS.length;
+  const total = steps.length;
   const last = step === total - 1;
 
   return (

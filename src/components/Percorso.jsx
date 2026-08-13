@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CRISI } from '../lib/pathway.js';
 import { PERSONAS } from '../data/personas.js';
-import { loadProgress, saveProgress } from '../lib/storage.js';
+import { loadProgress, saveProgress, loadObjective, computeStreak } from '../lib/storage.js';
 import { MascotBubble } from './Mascot.jsx';
 
 // Cuorino "giudica" i progressi: messaggi a copione, veloci e offline.
@@ -85,6 +85,11 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
 
   const doneOf = (m) => (progress[m.id] ? Object.keys(progress[m.id]).length : 0);
 
+  // Obiettivo scelto dall'utente e streak di giorni consecutivi con esercizi.
+  const obiettivo = loadObjective(user);
+  const streak = computeStreak(user);
+  const pctObiettivo = obiettivo ? Math.min(100, Math.round((streak / obiettivo) * 100)) : 0;
+
   // Conteggi globali per la "metro di guarigione"
   let totAtt = 0;
   let doneAtt = 0;
@@ -95,18 +100,15 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
   const pct = totAtt ? Math.round((doneAtt / totAtt) * 100) : 0;
   const completato = pct >= 100;
 
-  const R = 52;
-  const C = 2 * Math.PI * R;
-  const dash = `${(pct / 100) * C} ${C}`;
-
   return (
     <section className="percorso">
       <div className="percorso-top">
         <div>
           <h2>Il tuo percorso</h2>
           <p className="lead">
-            Non hai una scadenza: avanzi quando puoi. Ogni passo conta. La barra si riempie man mano che
-            completi le attività — finché non ti senti di nuovo intero/a.
+            Non hai una scadenza: avanzi quando puoi. Ogni passo conta. Qui sotto vedi l’obiettivo che
+            ti sei dato/a e quanti giorni di fila stai facendo gli esercizi — finché non ti senti di
+            nuovo intero/a.
           </p>
           {onHelp && (
             <button className="ghost small tut-help" onClick={onHelp} title="Come funziona l'interfaccia">
@@ -114,12 +116,29 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
             </button>
           )}
         </div>
-        <div className="ring" title={`Guarigione ${pct}%`}>
-          <svg viewBox="0 0 120 120">
-            <circle className="ring-bg" cx="60" cy="60" r={R} />
-            <circle className="ring-fg" cx="60" cy="60" r={R} style={{ strokeDasharray: dash }} />
-          </svg>
-          <div className="ring-label">{pct}%</div>
+        <div
+          className="streak-box"
+          title={`Obiettivo: ${obiettivo ? obiettivo + ' giorni' : 'da impostare'} · Streak: ${streak} giorni`}
+        >
+          <div className="streak-stat">
+            <span className="streak-emoji" aria-hidden="true">🔥</span>
+            <div>
+              <strong>{streak}</strong>
+              <small>{streak === 1 ? 'giorno di fila' : 'giorni di fila'}</small>
+            </div>
+          </div>
+          <div className="streak-stat">
+            <span className="streak-emoji" aria-hidden="true">🎯</span>
+            <div>
+              <strong>{obiettivo ? `${obiettivo} giorni` : '—'}</strong>
+              <small>obiettivo che ti sei dato/a</small>
+            </div>
+          </div>
+          {obiettivo ? (
+            <div className="streak-goal" title={`${pctObiettivo}% dell'obiettivo`}>
+              <div className="streak-goal-fill" style={{ width: `${pctObiettivo}%` }} />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -195,7 +214,7 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
 
       <div className="actions center">
         <button className="primary" onClick={onChat}>
-          Apri la chat con uno psicologo
+          Apri la chat con un assistente
         </button>
         <button className="ghost" onClick={onRedo}>
           Rifai il questionario

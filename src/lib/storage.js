@@ -12,7 +12,9 @@ const K_LASTDAILY = 'dn_lastdaily_'; // + username -> dateKey ultimo questionari
 const K_DAILY = 'dn_daily_'; // + username + ':' + dateKey -> { answers, done }
 const K_DIARIO = 'dn_diario_'; // + username -> [ { id, ts, text } ]
 const K_PROGRESS = 'dn_progress_'; // + username -> { [moduleId]: {...} }
-const K_TUTORIAL = 'dn_tutorial_seen'; // globale (tutorial visto una volta)
+const K_TUTORIAL = 'dn_tutorial_seen'; // globale (tutorial percorso visto una volta)
+const K_CHAT_TUTORIAL = 'dn_chat_tutorial_seen'; // globale (tutorial chat visto una volta)
+const K_OBJECTIVE = 'dn_objective_'; // + username -> giorni (5/15/30)
 const K_CHAT = 'dn_chat_'; // + username + ':' + personaId -> [ { role, content } ]
 const K_MEMPROF = 'dn_memprof_'; // + username + ':' + personaId -> riassunto AI
 
@@ -204,7 +206,7 @@ export function saveTutorialSeen() {
   localStorage.setItem(K_TUTORIAL, '1');
 }
 
-// ---------- Memoria delle conversazioni con gli psicologi AI (per utente + personaggio) ----------
+// ---------- Memoria delle conversazioni con gli assistenti e guida AI (per utente + personaggio) ----------
 export function loadChat(username, personaId) {
   try {
     return JSON.parse(localStorage.getItem(K_CHAT + username + ':' + personaId) || 'null');
@@ -275,6 +277,63 @@ export function saveLastDaily(username, dateKey) {
 export function isTodayQuestionnaireDone(username, dateKey) {
   const o = loadDaily(username, dateKey);
   return !!(o && o.answers);
+}
+
+// ---------- Obiettivo personale (giorni di fila da dedicare a sé) ----------
+export function loadObjective(username) {
+  const v = localStorage.getItem(K_OBJECTIVE + username);
+  const n = v ? Number(v) : 0;
+  return [5, 15, 30].includes(n) ? n : 0;
+}
+export function saveObjective(username, days) {
+  if ([5, 15, 30].includes(Number(days))) {
+    try {
+      localStorage.setItem(K_OBJECTIVE + username, String(days));
+    } catch {
+      /* ignora */
+    }
+  }
+}
+
+// ---------- Streak: giorni consecutivi con almeno un esercizio svolto ----------
+const DAY_MS = 86400000;
+
+function dateKeyLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const g = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${g}`;
+}
+
+function dayActive(user, key) {
+  const o = loadDaily(user, key);
+  if (!o || !o.done) return false;
+  return Object.values(o.done).some((v) => v);
+}
+
+// Numero di giorni consecutivi (fino a oggi, o ieri se oggi non ha ancora
+// svolto nulla) in cui l'utente ha completato almeno un esercizio.
+export function computeStreak(user) {
+  if (!user) return 0;
+  let cursor = new Date();
+  cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+  if (!dayActive(user, dateKeyLocal(cursor))) {
+    cursor = new Date(cursor.getTime() - DAY_MS);
+  }
+  let streak = 0;
+  while (dayActive(user, dateKeyLocal(cursor))) {
+    streak += 1;
+    cursor = new Date(cursor.getTime() - DAY_MS);
+  }
+  return streak;
+}
+
+// ---------- Tutorial chat (visto una volta) ----------
+export function loadChatTutorialSeen() {
+  return localStorage.getItem(K_CHAT_TUTORIAL) === '1';
+}
+export function saveChatTutorialSeen() {
+  localStorage.setItem(K_CHAT_TUTORIAL, '1');
 }
 
 // ---------- Reset completo dei dati di un utente (mantiene l'account) ----------

@@ -6,8 +6,9 @@ import Percorso from './components/Percorso.jsx';
 import Chat from './components/Chat.jsx';
 import Diario from './components/Diario.jsx';
 import Oggi from './components/Oggi.jsx';
-import Tutorial from './components/Tutorial.jsx';
-import { DOMANDE } from './data/questionario.js';
+import Tutorial, { CHAT_STEPS } from './components/Tutorial.jsx';
+import EmergencyPopup from './components/EmergencyPopup.jsx';
+import { DOMANDE, DOMANDA_OBIETTIVO } from './data/questionario.js';
 import { computePathway } from './lib/pathway.js';
 import { dateKey } from './lib/dailytasks.js';
 import {
@@ -23,6 +24,10 @@ import {
   logout,
   loadTutorialSeen,
   saveTutorialSeen,
+  loadObjective,
+  saveObjective,
+  loadChatTutorialSeen,
+  saveChatTutorialSeen,
 } from './lib/storage.js';
 
 // Domande del profilo (una tantum, alla registrazione) e del questionario
@@ -58,10 +63,20 @@ export default function App() {
   const [pending, setPending] = useState(null); // { user, name } durante la registrazione
   const [chatPersona, setChatPersona] = useState('elena');
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showChatTutorial, setShowChatTutorial] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const todayKey = dateKey(new Date());
   const todayDone = user ? isTodayQuestionnaireDone(user, todayKey) : true;
+
+  // Domande del questionario giornaliero. Se l'utente non ha ancora scelto un
+  // obiettivo, aggiungiamo la domanda sull'obiettivo (solo la prima volta).
+  const effUser = user || (pending && pending.user);
+  const needObjective = !!effUser && !loadObjective(effUser);
+  const dailyDomande = needObjective
+    ? [...DOMANDE_GIORNALIERE, DOMANDA_OBIETTIVO]
+    : DOMANDE_GIORNALIERE;
 
   // --- Registrazione: passo 1 credenziali -> passo 2 profilo ---
   const handleRegister = (username, displayName) => {
@@ -87,10 +102,15 @@ export default function App() {
     savePath(u, r);
     saveDaily(u, todayKey, { answers, done: {} });
     saveLastDaily(u, todayKey);
+    if (answers.obiettivo) saveObjective(u, Number(answers.obiettivo));
     setUser(u);
     setName(pending ? pending.name : name);
     setResult(r);
     setScreen('oggi');
+    // Se ha segnalato pensieri di autolesionismo, mostra il popup di emergenza.
+    if (answers.crisi === 'a_volte' || answers.crisi === 'si') {
+      setShowEmergency(true);
+    }
   };
 
   // --- Login: carica profilo + percorso salvati ---
@@ -125,6 +145,12 @@ export default function App() {
   const openChatWith = (personaId) => {
     if (personaId) setChatPersona(personaId);
     setScreen('chat');
+    if (!loadChatTutorialSeen()) setShowChatTutorial(true);
+  };
+
+  const closeChatTutorial = () => {
+    setShowChatTutorial(false);
+    saveChatTutorialSeen();
   };
 
   // Apre "Il tuo percorso" e, al primo accesso, fa partire il tutorial
@@ -198,7 +224,7 @@ export default function App() {
                         setMenuOpen(false);
                       }}
                     >
-                      Psicologi AI
+                      Assistenti e guida
                     </button>
                   )}
                   <button
@@ -254,7 +280,7 @@ export default function App() {
 
         {screen === 'quiz-giornaliero' && (
           <Questionario
-            domande={DOMANDE_GIORNALIERE}
+            domande={dailyDomande}
             title="Come ti senti oggi?"
             cta="Salva e mostra i compiti"
             hideMultiCheck
@@ -287,13 +313,24 @@ export default function App() {
         )}
 
         {screen === 'chat' && user && result && (
-          <Chat user={user} crisi={result.crisi} initialPersona={chatPersona} />
+          <Chat
+            user={user}
+            crisi={result.crisi}
+            initialPersona={chatPersona}
+            onHelp={() => setShowChatTutorial(true)}
+          />
         )}
 
         {screen === 'diario' && user && <Diario user={user} />}
       </main>
 
       {showTutorial && screen === 'percorso' && <Tutorial onClose={closeTutorial} />}
+
+      {showChatTutorial && screen === 'chat' && (
+        <Tutorial steps={CHAT_STEPS} onClose={closeChatTutorial} />
+      )}
+
+      {showEmergency && <EmergencyPopup onClose={() => setShowEmergency(false)} />}
 
       <footer className="footer">
         <strong>Nota importante:</strong> BREAKAPP è uno strumento di compagnia e cura di sé, non un

@@ -76,3 +76,17 @@ export const DOMANDE = [
     ],
   },
 ];
+
+// Domanda sull'obiettivo personale: si chiede solo la PRIMA volta (quando
+// l'utente non ha ancora scelto un obiettivo). Va impostata nel primo
+// questionario, non ogni giorno.
+export const DOMANDA_OBIETTIVO = {
+  id: 'obiettivo',
+  q: 'Quanti giorni di fila vuoi provare a dedicarti a te stesso/a?',
+  type: 'single',
+  options: [
+    { value: '5', label: '5 giorni' },
+    { value: '15', label: '15 giorni' },
+    { value: '30', label: '1 mese' },
+  ],
+};

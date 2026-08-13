@@ -77,8 +77,8 @@ export default function Welcome({ todayDone, onDaily, onOggi }) {
         </div>
         <div className="card">
           <span className="card-ico">💬</span>
-          <h3>Psicologi AI</h3>
-          <p>Tre stili diversi con cui chattare quando hai bisogno di parole.</p>
+          <h3>Assistenti e guida</h3>
+          <p>Tre stili diversi, creati dall'IA, con cui chattare quando hai bisogno di parole. Non sono psicologi: ti stanno vicino, non fanno diagnosi.</p>
         </div>
       </div>
 

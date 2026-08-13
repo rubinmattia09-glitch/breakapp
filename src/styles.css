@@ -424,3 +424,60 @@ button { font-family: inherit; }
   text-align: center; font-size: 15px; color: var(--brand); font-weight: 700;
   letter-spacing: .2px; margin: 0 0 6px;
 }
+
+/* Chat: nota fissa che gli assistenti sono creati dall'IA */
+.ai-note {
+  margin: 8px 0 0; font-size: 12.5px; color: var(--brand-ink);
+  background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+  line-height: 1.45;
+}
+.ai-note strong { font-weight: 700; }
+
+/* Percorso: obiettivo + streak (sostituisce l'anello del 100%) */
+.streak-box {
+  flex: 0 0 auto; width: 230px; max-width: 100%;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.streak-stat { display: flex; align-items: center; gap: 12px; }
+.streak-emoji { font-size: 26px; line-height: 1; }
+.streak-stat strong { display: block; font-size: 20px; color: var(--brand-ink); }
+.streak-stat small { display: block; font-size: 12px; color: var(--muted); }
+.streak-goal { height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
+.streak-goal-fill { height: 100%; background: var(--grad); border-radius: 8px; transition: width .45s ease; }
+@media (prefers-reduced-motion: reduce) { .streak-goal-fill { transition: none; } }
+@media (max-width: 640px) {
+  .streak-box { width: 100%; }
+}
+
+/* Popup di emergenza (autolesionismo) */
+.emergency-overlay {
+  position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center;
+  background: rgba(40, 20, 26, 0.55); padding: 16px;
+}
+.emergency-popup {
+  position: relative; width: 100%; max-width: 420px; background: var(--panel);
+  border: 2px solid var(--warn-line); border-radius: 18px; padding: 22px 22px 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35); animation: popIn .18s ease-out;
+}
+@keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+.emergency-popup h3 { margin: 0 0 10px; color: var(--warn-ink); font-size: 18px; padding-right: 28px; }
+.emergency-popup p { margin: 0 0 12px; color: var(--ink); font-size: 14px; line-height: 1.55; }
+.emergency-close {
+  position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer;
+  font-size: 20px; line-height: 1;
+}
+.emergency-close:hover { color: var(--ink); }
+.emergency-list { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.emergency-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px;
+}
+.emergency-name { font-size: 14px; color: var(--ink); }
+.emergency-num { font-weight: 800; font-size: 16px; color: var(--brand-ink); text-decoration: none; }
+.emergency-num:hover { text-decoration: underline; }
+.emergency-foot { font-size: 13px; color: var(--muted); }
+.emergency-foot strong { color: var(--warn-ink); }
+.emergency-popup .primary { width: 100%; margin-top: 6px; }

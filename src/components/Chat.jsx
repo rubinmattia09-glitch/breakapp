@@ -17,7 +17,7 @@ const APERTURE = [
   'Mi manca, anche se so che era giusto chiudere.',
 ];
 
-export default function Chat({ user, crisi, initialPersona = 'elena' }) {
+export default function Chat({ user, crisi, initialPersona = 'elena', onHelp }) {
   const [persona, setPersona] = useState(initialPersona);
   const [messages, setMessages] = useState(() => loadChat(user, initialPersona) || []);
   const [profile, setProfile] = useState(() => loadMemoryProfile(user, initialPersona));
@@ -187,11 +187,21 @@ export default function Chat({ user, crisi, initialPersona = 'elena' }) {
         <button type="button" className="ghost small mem-btn" onClick={saveMemoryNow} title="Aggiorna ciò che l'assistente ricorda di te">
           💾 Salva memoria
         </button>
+        {onHelp && (
+          <button type="button" className="ghost small tut-help" onClick={onHelp} title="Come funziona la chat">
+            Come funziona?
+          </button>
+        )}
         </div>
         <p className="persona-tone">{PERSONAS[persona].tone}</p>
+        <p className="ai-note">
+          🤖 Elena, Marco e Sofia sono <strong>assistenti e guide create dall'IA</strong>: non sono
+          psicologi né medici, ma ti stanno vicino quando vuoi parlare. Le chiacchierate restano solo
+          nel tuo dispositivo.
+        </p>
         {profile && (
           <p className="mem-note">
-            🧠 Questo psicologo ricorda le tue conversazioni passate (memoria locale sul tuo dispositivo).
+            🧠 Questo assistente ricorda le tue conversazioni passate (memoria locale sul tuo dispositivo).
           </p>
         )}
         {savedFlash && <p className="mem-flash">{savedFlash}</p>}
