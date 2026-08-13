@@ -450,7 +450,6 @@ async function handleBoardPost(req, res) {
   }
   const body = (p && p.body ? String(p.body) : '').trim();
   if (!body) return sendJson(res, 400, { error: 'Il messaggio è vuoto.' });
-  if (body.length > 500) return sendJson(res, 400, { error: 'Massimo 500 caratteri.' });
   const created = new Date().toISOString();
   try {
     await dbRun('INSERT INTO posts (body, created_at) VALUES (?, ?)', [body, created]);

@@ -71,12 +71,11 @@ export default function Bacheca({ onBack }) {
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          maxLength={500}
           placeholder="Scrivi qui il tuo pensiero anonimo…"
-          rows={3}
+          rows={4}
         />
         <div className="board-form-foot">
-          <span className="muted">{body.length}/500</span>
+          <span className="muted">{body.length} caratteri</span>
           <button className="primary small" type="submit" disabled={sending || !body.trim()}>
             {sending ? 'Invio…' : 'Pubblica anonimo'}
           </button>
