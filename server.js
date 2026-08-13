@@ -9,8 +9,8 @@
 // Configurazione (variabili d'ambiente):
 //   PORT            porta su cui ascoltare        (default 3000)
 //   OPENAI_API_KEY  chiave dell'API compatibile   (obbligatoria per la chat)
-//   OPENAI_BASE_URL endpoint base                (default https://api.openai.com/v1)
-//   OPENAI_MODEL    nome del modello             (default gpt-4o-mini)
+//   OPENAI_BASE_URL endpoint base                (default https://api.groq.com/openai/v1)
+//   OPENAI_MODEL    nome del modello Llama        (default llama-3.3-70b-versatile)
 //
 // Le variabili d'ambiente reali hanno la precedenza su quelle nel file .env.
 // Avvia con:  node server.js   (oppure: npm start)
