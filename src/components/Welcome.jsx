@@ -59,14 +59,16 @@ export default function Welcome({ todayDone, onDaily, onOggi, onRespira }) {
           Un compagno che ti accompagna dopo la fine di una relazione, passo dopo passo, finché non ti
           senti di nuovo intero/a. Un percorso fatto su misura, e qualcuno con cui parlare quando vuoi.
         </p>
-        <button className="primary" onClick={todayDone ? onOggi : onDaily}>
-          {todayDone ? 'Le attività di oggi' : 'Come ti senti oggi?'}
-        </button>
-        {onRespira && (
-          <button className="ghost respira-quick" onClick={onRespira}>
-            🫁 Respira un momento
+        <div className="hero-actions">
+          <button className="primary" onClick={todayDone ? onOggi : onDaily}>
+            {todayDone ? 'Le attività di oggi' : 'Come ti senti oggi?'}
           </button>
-        )}
+          {onRespira && (
+            <button className="ghost respira-quick" onClick={onRespira}>
+              🫁 Respira un momento
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="cards">
