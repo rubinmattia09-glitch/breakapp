@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 64" role="img" aria-label="BREAKAPP">
+  <defs>
+    <linearGradient id="heartGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3a6ad"/>
+      <stop offset="1" stop-color="#e35d6a"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 56 C32 56 8 40 8 22 C8 12 15 6 24 6 C29 6 31.5 8.5 32 11 C32.5 8.5 35 6 40 6 C49 6 56 12 56 22 C56 40 32 56 32 56 Z" fill="url(#heartGrad)"/>
+  <text x="68" y="43" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="1.5" fill="#3a2730">BREAKAPP</text>
+</svg>
