@@ -83,10 +83,33 @@ const USERS_SCHEMA = `CREATE TABLE IF NOT EXISTS users (
 )`;
 
 const POSTS_SCHEMA = `CREATE TABLE IF NOT EXISTS posts (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  body       TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  body         TEXT NOT NULL,
+  created_at   TEXT NOT NULL,
+  delete_token TEXT
 )`;
+
+// Le tabelle già esistenti (es. su Turso) non hanno delete_token: lo aggiungiamo
+// in modo sicuro se manca, così gli autori possono ritirare i propri pensieri.
+async function ensurePostsDeleteToken() {
+  if (dbBackend === 'memory') return; // in memoria i post non persistono
+  try {
+    const rows = await dbAll('PRAGMA table_info(posts)');
+    const has = Array.isArray(rows) && rows.some(
+      (r) => r && (r.name || '').toLowerCase() === 'delete_token'
+    );
+    if (!has) {
+      await dbRun('ALTER TABLE posts ADD COLUMN delete_token TEXT');
+      console.log('Bacheca: aggiunta colonna delete_token alla tabella posts.');
+    }
+  } catch (e) {
+    console.warn(
+      'Bacheca: impossibile verificare/aggiornare posts (' +
+        (e && e.message ? e.message : e) +
+        ').'
+    );
+  }
+}
 
 async function initDb() {
   // 1) Turso (SQLite nel cloud)
@@ -217,6 +240,24 @@ async function dbRun(sql, args = []) {
   } else if (dbBackend === 'sqlite') {
     db.prepare(sql).run(...args);
   }
+}
+
+// Inserisce un post e ritorna l'id appena creato (o null in modalità memoria).
+async function dbInsertPost(body, created, token) {
+  if (dbBackend === 'turso') {
+    const r = await db.execute({
+      sql: 'INSERT INTO posts (body, created_at, delete_token) VALUES (?, ?, ?)',
+      args: [body, created, token],
+    });
+    return r.lastInsertRowid != null ? Number(r.lastInsertRowid) : null;
+  }
+  if (dbBackend === 'sqlite') {
+    const info = db
+      .prepare('INSERT INTO posts (body, created_at, delete_token) VALUES (?, ?, ?)')
+      .run(body, created, token);
+    return info.lastInsertRowid != null ? Number(info.lastInsertRowid) : null;
+  }
+  return null;
 }
 
 async function handleAuthRegister(req, res) {
@@ -451,11 +492,47 @@ async function handleBoardPost(req, res) {
   const body = (p && p.body ? String(p.body) : '').trim();
   if (!body) return sendJson(res, 400, { error: 'Il messaggio è vuoto.' });
   const created = new Date().toISOString();
+  // Token segreto mostrato una sola volta: serve all'autore per ritirare il post.
+  const deleteToken = crypto.randomBytes(24).toString('hex');
   try {
-    await dbRun('INSERT INTO posts (body, created_at) VALUES (?, ?)', [body, created]);
-    sendJson(res, 200, { ok: true });
+    const id = await dbInsertPost(body, created, deleteToken);
+    sendJson(res, 200, { ok: true, id, deleteToken });
   } catch (e) {
     sendJson(res, 500, { error: 'Impossibile salvare il messaggio: ' + (e && e.message ? e.message : e) });
+  }
+}
+
+// Ritira un pensiero: richiede l'id e il token segreto ricevuto alla pubblicazione.
+async function handleBoardDelete(req, res) {
+  if (req.method !== 'DELETE') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try {
+    p = await readJson(req);
+  } catch (e) {
+    return sendJson(res, 400, { error: e.message });
+  }
+  const id = Number(p && p.id);
+  const token = (p && p.token ? String(p.token) : '').trim();
+  if (!Number.isInteger(id) || !token) {
+    return sendJson(res, 400, { ok: false, error: 'Richiesta non valida.' });
+  }
+  try {
+    const rows = await dbAll('SELECT delete_token FROM posts WHERE id = ?', [id]);
+    if (!rows.length) {
+      return sendJson(res, 404, { ok: false, error: 'Messaggio non trovato.' });
+    }
+    const stored = (rows[0].delete_token || '').trim();
+    if (stored !== token) {
+      return sendJson(res, 403, { ok: false, error: 'Non sei autorizzato a ritirare questo messaggio.' });
+    }
+    await dbRun('DELETE FROM posts WHERE id = ?', [id]);
+    sendJson(res, 200, { ok: true });
+  } catch (e) {
+    sendJson(res, 500, { error: 'Impossibile ritirare il messaggio: ' + (e && e.message ? e.message : e) });
   }
 }
 
@@ -546,6 +623,7 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/board') {
     if (req.method === 'GET') return handleBoardGet(res);
     if (req.method === 'POST') return handleBoardPost(req, res);
+    if (req.method === 'DELETE') return handleBoardDelete(req, res);
     res.statusCode = 405;
     res.end('Method Not Allowed');
     return;
@@ -561,6 +639,7 @@ const server = http.createServer((req, res) => {
 
 async function main() {
   await initDb();
+  await ensurePostsDeleteToken();
   server.listen(PORT, HOST, () => {
     const { apiKey, base, model } = llmConfig();
     console.log(`\nBREAKAPP in esecuzione su http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);

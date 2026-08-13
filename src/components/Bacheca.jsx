@@ -13,7 +13,37 @@ function truncate(text, limit) {
   return text.slice(0, idx).trimEnd() + '…';
 }
 
-function PostCard({ post }) {
+// I token di cancellazione sono salvati SOLO sul dispositivo di chi ha pubblicato,
+// così può ritirare i propri pensieri ma non quelli degli altri.
+const MY_POSTS_KEY = 'breakapp_my_posts';
+
+function loadMyTokens() {
+  try {
+    return JSON.parse(localStorage.getItem(MY_POSTS_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+function saveMyToken(id, token) {
+  const m = loadMyTokens();
+  m[String(id)] = token;
+  try {
+    localStorage.setItem(MY_POSTS_KEY, JSON.stringify(m));
+  } catch {
+    /* localStorage pieno o non disponibile: il tasto Ritira non sarà disponibile */
+  }
+}
+function removeMyToken(id) {
+  const m = loadMyTokens();
+  delete m[String(id)];
+  try {
+    localStorage.setItem(MY_POSTS_KEY, JSON.stringify(m));
+  } catch {
+    /* ignora */
+  }
+}
+
+function PostCard({ post, myToken, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = post.body.length > LIMIT;
   const shown = !isLong || expanded ? post.body : truncate(post.body, LIMIT);
@@ -29,7 +59,18 @@ function PostCard({ post }) {
           {expanded ? 'Riduci' : 'Espandi'}
         </button>
       )}
-      <span className="board-date">{formatDate(post.created_at)}</span>
+      <div className="board-foot">
+        <span className="board-date">{formatDate(post.created_at)}</span>
+        {myToken && (
+          <button
+            type="button"
+            className="board-retract"
+            onClick={() => onDelete(post.id)}
+          >
+            Ritira
+          </button>
+        )}
+      </div>
     </article>
   );
 }
@@ -40,6 +81,7 @@ export default function Bacheca({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const myTokens = loadMyTokens();
 
   const load = async () => {
     try {
@@ -74,6 +116,7 @@ export default function Bacheca({ onBack }) {
       if (!r.ok || !data.ok) {
         setError(data.error || 'Invio non riuscito.');
       } else {
+        if (data.id != null && data.deleteToken) saveMyToken(data.id, data.deleteToken);
         setBody('');
         load();
       }
@@ -81,6 +124,28 @@ export default function Bacheca({ onBack }) {
       setError('Invio non riuscito. Controlla la connessione.');
     } finally {
       setSending(false);
+    }
+  };
+
+  const deletePost = async (id) => {
+    const token = loadMyTokens()[String(id)];
+    if (!token) return;
+    setError('');
+    try {
+      const r = await fetch('/api/board', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, token }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setError(data.error || 'Impossibile ritirare il messaggio.');
+      } else {
+        removeMyToken(id);
+        load();
+      }
+    } catch {
+      setError('Impossibile ritirare il messaggio. Controlla la connessione.');
     }
   };
 
@@ -125,7 +190,12 @@ export default function Bacheca({ onBack }) {
           <p className="empty">Ancora nessun messaggio. Sii il primo a lasciarne uno.</p>
         )}
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} />
+          <PostCard
+            key={p.id}
+            post={p}
+            myToken={myTokens[String(p.id)] || null}
+            onDelete={deletePost}
+          />
         ))}
       </div>
     </section>
