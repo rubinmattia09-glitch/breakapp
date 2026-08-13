@@ -58,6 +58,7 @@ export default function App() {
   const [pending, setPending] = useState(null); // { user, name } durante la registrazione
   const [chatPersona, setChatPersona] = useState('elena');
   const [showTutorial, setShowTutorial] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const todayKey = dateKey(new Date());
   const todayDone = user ? isTodayQuestionnaireDone(user, todayKey) : true;
@@ -142,45 +143,91 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">BREAKAPP</div>
-        <nav className="nav">
-          {user && (
-            <button className={screen === 'welcome' ? 'active' : ''} onClick={() => setScreen('welcome')}>
-              Home
-            </button>
-          )}
-          {user && result && (
-            <button className={screen === 'oggi' ? 'active' : ''} onClick={() => setScreen('oggi')}>
-              Oggi
-            </button>
-          )}
-          {user && result && (
-            <button
-              className={screen === 'percorso' ? 'active' : ''}
-              onClick={goPercorso}
-            >
-              Il tuo percorso
-            </button>
-          )}
-          {user && result && (
-            <button className={screen === 'chat' ? 'active' : ''} onClick={() => openChatWith()}>
-              Psicologi AI
-            </button>
-          )}
-          {user && (
-            <button className={screen === 'diario' ? 'active' : ''} onClick={() => setScreen('diario')}>
-              Diario
-            </button>
-          )}
-        </nav>
         {user && (
-          <div className="account">
-            <span className="who" title={user}>
-              {name || user}
-            </span>
-            <button className="ghost small" onClick={handleLogout}>
-              Esci
+          <>
+            <button
+              className={`hamburger ${menuOpen ? 'open' : ''}`}
+              aria-label="Apri il menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
             </button>
-          </div>
+            {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
+            {menuOpen && (
+              <div className="menu-panel" role="menu">
+                <nav className="menu-list">
+                  <button
+                    className={screen === 'welcome' ? 'active' : ''}
+                    onClick={() => {
+                      setScreen('welcome');
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Home
+                  </button>
+                  {result && (
+                    <button
+                      className={screen === 'oggi' ? 'active' : ''}
+                      onClick={() => {
+                        setScreen('oggi');
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Oggi
+                    </button>
+                  )}
+                  {result && (
+                    <button
+                      className={screen === 'percorso' ? 'active' : ''}
+                      onClick={() => {
+                        goPercorso();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Il tuo percorso
+                    </button>
+                  )}
+                  {result && (
+                    <button
+                      className={screen === 'chat' ? 'active' : ''}
+                      onClick={() => {
+                        openChatWith();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Psicologi AI
+                    </button>
+                  )}
+                  <button
+                    className={screen === 'diario' ? 'active' : ''}
+                    onClick={() => {
+                      setScreen('diario');
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Diario
+                  </button>
+                </nav>
+                <div className="menu-foot">
+                  <span className="who" title={user}>
+                    {name || user}
+                  </span>
+                  <button
+                    className="ghost small"
+                    onClick={() => {
+                      handleLogout();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Esci
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </header>
 
