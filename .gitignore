@@ -12,8 +12,10 @@ dist
 *.log
 npm-debug.log*
 
-# Database SQLite (generato a runtime; non committare)
-data/
+# Database SQLite (generato a runtime; non committare).
+# NOTA: /data/ (con lo slash iniziale) riguarda SOLO la cartella alla radice
+# (dove vive data/app.db). NON deve escludere src/data/ (codice sorgente!).
+/data/
 *.sqlite
 *.sqlite-journal
 *.db

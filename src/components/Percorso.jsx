@@ -3,6 +3,7 @@ import { CRISI } from '../lib/pathway.js';
 import { PERSONAS } from '../data/personas.js';
 import { loadProgress, saveProgress, loadObjective, saveObjective, computeStreak } from '../lib/storage.js';
 import { MascotBubble } from './Mascot.jsx';
+import { MOTIVATIONAL } from '../data/motivational.js';
 
 // Cuorino "giudica" i progressi: messaggi a copione, veloci e offline.
 const GENERIC = [
@@ -11,6 +12,14 @@ const GENERIC = [
   'Ecco, un’altra spunta.',
   'Stai andando forte!',
   'Un passettino alla volta. Brava/o.',
+];
+
+// Pool unico da cui Cuorino pesca a caso: frasi generiche + citazioni
+// motivazionali su "tenere duro" e "andare avanti". Ogni voce ha il testo
+// e l'umore (mood) da mostrare.
+const ENCOURAGE = [
+  ...GENERIC.map((text) => ({ text, mood: 'happy' })),
+  ...MOTIVATIONAL,
 ];
 
 function countDone(prog, moduli) {
@@ -41,7 +50,8 @@ function reactToProgress(before, after, moduli) {
         return { text: `Modulo «${m.titolo}» completato! Ne sei capace.`, mood: 'cheer' };
       }
     }
-    return { text: GENERIC[ca % GENERIC.length], mood: 'happy' };
+    const pick = ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)];
+    return { text: pick.text, mood: pick.mood || 'happy' };
   }
   if (ca < cb) {
     return { text: 'Nessun problema, rifalla quando vuoi.', mood: 'think' };
