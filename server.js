@@ -82,6 +82,12 @@ const USERS_SCHEMA = `CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL
 )`;
 
+const POSTS_SCHEMA = `CREATE TABLE IF NOT EXISTS posts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)`;
+
 async function initDb() {
   // 1) Turso (SQLite nel cloud)
   if (TURSO_URL && TURSO_TOKEN) {
@@ -89,6 +95,7 @@ async function initDb() {
       const { createClient } = await import('@libsql/client');
       db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
       await db.execute(USERS_SCHEMA);
+      await db.execute(POSTS_SCHEMA);
       dbBackend = 'turso';
       console.log('Database: Turso (' + TURSO_URL + ')');
       return;
@@ -107,6 +114,7 @@ async function initDb() {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new DatabaseSync(DB_PATH);
     db.exec(USERS_SCHEMA);
+    db.exec(POSTS_SCHEMA);
     dbBackend = 'sqlite';
     console.log('Database: SQLite locale (' + DB_PATH + ')');
     return;
@@ -189,6 +197,26 @@ async function dbLogin({ username, password }) {
   if (serverHash(password, rec.salt) !== rec.hash)
     return { status: 401, body: { ok: false, error: 'Password errata.' } };
   return { status: 200, body: { ok: true, name: rec.name } };
+}
+
+// --- Helper generici per la bacheca (stesso backend di users) ---
+async function dbAll(sql, args = []) {
+  if (dbBackend === 'turso') {
+    const r = await db.execute({ sql, args });
+    return r.rows;
+  }
+  if (dbBackend === 'sqlite') {
+    return db.prepare(sql).all(...args);
+  }
+  return [];
+}
+
+async function dbRun(sql, args = []) {
+  if (dbBackend === 'turso') {
+    await db.execute({ sql, args });
+  } else if (dbBackend === 'sqlite') {
+    db.prepare(sql).run(...args);
+  }
 }
 
 async function handleAuthRegister(req, res) {
@@ -396,6 +424,42 @@ async function handleMemory(req, res) {
   }
 }
 
+// --- /api/board : bacheca anonima di pensieri/lettere ---
+async function handleBoardGet(res) {
+  try {
+    const posts = await dbAll(
+      'SELECT id, body, created_at FROM posts ORDER BY created_at DESC LIMIT 50'
+    );
+    sendJson(res, 200, { posts });
+  } catch (e) {
+    sendJson(res, 500, { error: 'Impossibile leggere la bacheca: ' + (e && e.message ? e.message : e) });
+  }
+}
+
+async function handleBoardPost(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try {
+    p = await readJson(req);
+  } catch (e) {
+    return sendJson(res, 400, { error: e.message });
+  }
+  const body = (p && p.body ? String(p.body) : '').trim();
+  if (!body) return sendJson(res, 400, { error: 'Il messaggio è vuoto.' });
+  if (body.length > 500) return sendJson(res, 400, { error: 'Massimo 500 caratteri.' });
+  const created = new Date().toISOString();
+  try {
+    await dbRun('INSERT INTO posts (body, created_at) VALUES (?, ?)', [body, created]);
+    sendJson(res, 200, { ok: true });
+  } catch (e) {
+    sendJson(res, 500, { error: 'Impossibile salvare il messaggio: ' + (e && e.message ? e.message : e) });
+  }
+}
+
 // --- /api/health : stato del server (non espone la chiave) ---
 function handleHealth(res) {
   const { apiKey, base, model } = llmConfig();
@@ -480,6 +544,13 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/auth/login') return handleAuthLogin(req, res);
   if (pathname === '/api/chat') return handleChat(req, res);
   if (pathname === '/api/memory') return handleMemory(req, res);
+  if (pathname === '/api/board') {
+    if (req.method === 'GET') return handleBoardGet(res);
+    if (req.method === 'POST') return handleBoardPost(req, res);
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
   if (pathname.startsWith('/api/')) {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

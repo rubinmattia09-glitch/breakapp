@@ -9,6 +9,7 @@ import Oggi from './components/Oggi.jsx';
 import Tutorial, { CHAT_STEPS } from './components/Tutorial.jsx';
 import EmergencyPopup from './components/EmergencyPopup.jsx';
 import Respirazione from './components/Respirazione.jsx';
+import Bacheca from './components/Bacheca.jsx';
 import { DOMANDE, DOMANDA_OBIETTIVO } from './data/questionario.js';
 import { computePathway } from './lib/pathway.js';
 import { dateKey } from './lib/dailytasks.js';
@@ -263,6 +264,15 @@ export default function App() {
                   >
                     Respirazione
                   </button>
+                  <button
+                    className={screen === 'bacheca' ? 'active' : ''}
+                    onClick={() => {
+                      setScreen('bacheca');
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Bacheca
+                  </button>
                 </nav>
                 <div className="menu-foot">
                   <span className="who" title={user}>
@@ -351,6 +361,8 @@ export default function App() {
         {screen === 'diario' && user && <Diario user={user} />}
 
         {screen === 'respirazione' && <Respirazione onBack={() => setScreen(respiraBack)} />}
+
+        {screen === 'bacheca' && <Bacheca onBack={() => setScreen('welcome')} />}
       </main>
 
       {showTutorial && screen === 'percorso' && <Tutorial onClose={closeTutorial} />}
