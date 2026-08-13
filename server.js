@@ -61,36 +61,58 @@ function llmConfig() {
   };
 }
 
-// --- Database SQLite (nativo, nessuna dipendenza) per gli ACCOUNT ---
-// NOTA: su alcuni host (es. Render free) il disco è azzerato a ogni deploy,
-// quindi il file viene ricreato vuoto e gli account "spariscono" finché non ti
-// registri di nuovo. Per una persistenza reale serve un disco persistente o un
-// DB cloud (es. Turso). Qui implementiamo comunque il DB lato server.
+// --- Database per gli ACCOUNT ---
+// Tre backend, in ordine di preferenza:
+//   1) Turso (SQLite nel cloud, gratis, persistenza reale anche dopo i deploy)
+//      se sono impostate TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.
+//   2) SQLite locale su file (node:sqlite, built-in) se Turso non è configurato.
+//   3) Memoria (Map) come ultimo fallback: gli account NON persistono.
 const DB_PATH = process.env.SQLITE_DB || path.join(__dirname, 'data', 'app.db');
-let db = null; // DatabaseSync quando disponibile
-let dbMode = 'none'; // 'sqlite' | 'memory'
-let memUsers = null; // fallback in memoria se node:sqlite non è disponibile
+const TURSO_URL = process.env.TURSO_DATABASE_URL || '';
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+let db = null; // DatabaseSync (file) o client libSQL
+let dbBackend = 'none'; // 'turso' | 'sqlite' | 'memory'
+let memUsers = null; // fallback in memoria
+
+const USERS_SCHEMA = `CREATE TABLE IF NOT EXISTS users (
+  username   TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  salt       TEXT NOT NULL,
+  hash       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)`;
 
 async function initDb() {
+  // 1) Turso (SQLite nel cloud)
+  if (TURSO_URL && TURSO_TOKEN) {
+    try {
+      const { createClient } = await import('@libsql/client');
+      db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
+      await db.execute(USERS_SCHEMA);
+      dbBackend = 'turso';
+      console.log('Database: Turso (' + TURSO_URL + ')');
+      return;
+    } catch (e) {
+      console.warn(
+        'Turso non raggiungibile (' +
+          (e && e.message ? e.message : e) +
+          '). Provo il SQLite locale come fallback.'
+      );
+    }
+  }
+  // 2) SQLite locale (node:sqlite, built-in, nessuna dipendenza)
   try {
     const sqlite = await import('node:sqlite');
     const { DatabaseSync } = sqlite;
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new DatabaseSync(DB_PATH);
-    db.exec(
-      `CREATE TABLE IF NOT EXISTS users (
-         username   TEXT PRIMARY KEY,
-         name       TEXT NOT NULL,
-         salt       TEXT NOT NULL,
-         hash       TEXT NOT NULL,
-         created_at TEXT NOT NULL
-       )`
-    );
-    dbMode = 'sqlite';
-    console.log('Database SQLite attivo: ' + DB_PATH);
+    db.exec(USERS_SCHEMA);
+    dbBackend = 'sqlite';
+    console.log('Database: SQLite locale (' + DB_PATH + ')');
+    return;
   } catch (e) {
     db = null;
-    dbMode = 'memory';
+    dbBackend = 'memory';
     memUsers = new Map();
     console.warn(
       'SQLite non disponibile (' +
@@ -107,8 +129,8 @@ function serverHash(password, salt) {
   return sha256hex(password + ':' + salt);
 }
 
-// Registra un utente nel DB (o in memoria come fallback). Ritorna { status, body }.
-function dbRegister({ username, name, password }) {
+// Registra un utente. Ritorna { status, body }.
+async function dbRegister({ username, name, password }) {
   username = (username || '').trim();
   if (username.length < 3)
     return { status: 400, body: { ok: false, error: 'Scegli un nome utente di almeno 3 caratteri.' } };
@@ -117,36 +139,52 @@ function dbRegister({ username, name, password }) {
   if (!password || password.length < 4)
     return { status: 400, body: { ok: false, error: 'La password deve avere almeno 4 caratteri.' } };
   const finalName = (name || username).trim();
-  if (db) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = serverHash(password, salt);
+  const created = new Date().toISOString();
+  if (dbBackend === 'turso') {
+    const ex = await db.execute({ sql: 'SELECT 1 FROM users WHERE username = ?', args: [username] });
+    if (ex.rows.length)
+      return { status: 409, body: { ok: false, error: 'Questo nome utente è già registrato.' } };
+    await db.execute({
+      sql: 'INSERT INTO users (username, name, salt, hash, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [username, finalName, salt, hash, created],
+    });
+    return { status: 200, body: { ok: true } };
+  }
+  if (dbBackend === 'sqlite') {
     const exists = db.prepare('SELECT 1 FROM users WHERE username = ?').get(username);
     if (exists) return { status: 409, body: { ok: false, error: 'Questo nome utente è già registrato.' } };
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = serverHash(password, salt);
     db.prepare('INSERT INTO users (username, name, salt, hash, created_at) VALUES (?, ?, ?, ?, ?)').run(
       username,
       finalName,
       salt,
       hash,
-      new Date().toISOString()
+      created
     );
     return { status: 200, body: { ok: true } };
   }
   if (memUsers.has(username))
     return { status: 409, body: { ok: false, error: 'Questo nome utente è già registrato.' } };
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = serverHash(password, salt);
   memUsers.set(username, { name: finalName, salt, hash });
   return { status: 200, body: { ok: true } };
 }
 
 // Verifica le credenziali. Ritorna { status, body }.
-function dbLogin({ username, password }) {
+async function dbLogin({ username, password }) {
   username = (username || '').trim();
-  const rec = db
-    ? db.prepare('SELECT name, salt, hash FROM users WHERE username = ?').get(username)
-    : memUsers
-      ? memUsers.get(username)
-      : null;
+  let rec = null;
+  if (dbBackend === 'turso') {
+    const r = await db.execute({
+      sql: 'SELECT name, salt, hash FROM users WHERE username = ?',
+      args: [username],
+    });
+    rec = r.rows[0] || null;
+  } else if (dbBackend === 'sqlite') {
+    rec = db.prepare('SELECT name, salt, hash FROM users WHERE username = ?').get(username);
+  } else {
+    rec = memUsers ? memUsers.get(username) : null;
+  }
   if (!rec) return { status: 401, body: { ok: false, error: 'Utente non trovato.' } };
   if (serverHash(password, rec.salt) !== rec.hash)
     return { status: 401, body: { ok: false, error: 'Password errata.' } };
@@ -165,7 +203,7 @@ async function handleAuthRegister(req, res) {
   } catch (e) {
     return sendJson(res, 400, { error: e.message });
   }
-  const r = dbRegister(p);
+  const r = await dbRegister(p);
   return sendJson(res, r.status, r.body);
 }
 
@@ -181,7 +219,7 @@ async function handleAuthLogin(req, res) {
   } catch (e) {
     return sendJson(res, 400, { error: e.message });
   }
-  const r = dbLogin(p);
+  const r = await dbLogin(p);
   return sendJson(res, r.status, r.body);
 }
 
@@ -367,7 +405,7 @@ function handleHealth(res) {
     base,
     model,
     dist: fs.existsSync(DIST),
-    db: dbMode,
+    db: dbBackend,
   });
 }
 
@@ -457,7 +495,15 @@ async function main() {
     const { apiKey, base, model } = llmConfig();
     console.log(`\nBREAKAPP in esecuzione su http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
     console.log(`Chat AI: ${apiKey ? 'CONFIGURATA' : 'NON configurata (manca OPENAI_API_KEY)'}`);
-    console.log(`Database account: ${dbMode === 'sqlite' ? 'SQLite (' + DB_PATH + ')' : 'memoria (non persistente)'}`);
+    console.log(
+      `Database account: ${
+        dbBackend === 'turso'
+          ? 'Turso (cloud, persistente)'
+          : dbBackend === 'sqlite'
+            ? 'SQLite locale (' + DB_PATH + ')'
+            : 'memoria (non persistente)'
+      }`
+    );
     console.log(`Modello: ${model}  ·  Endpoint: ${base}\n`);
   });
 }

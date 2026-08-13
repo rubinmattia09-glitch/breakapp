@@ -16,3 +16,10 @@ services:
         value: https://api.groq.com/openai/v1
       - key: OPENAI_MODEL
         value: llama-3.3-70b-versatile
+      # Database degli account su Turso (SQLite nel cloud, gratis).
+      # Crea un DB su https://turso.tech e incolla qui URL e Token.
+      # Se le lasci vuote, il server usa un SQLite locale (azzerato a ogni deploy).
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

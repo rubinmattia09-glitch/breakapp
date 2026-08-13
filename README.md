@@ -49,6 +49,16 @@ Variabili d'ambiente da impostare **nell'hosting** (mai nel repo):
 | `OPENAI_API_KEY` | chiave di Groq (obbligatoria per la chat, formato `gsk-...`) | — |
 | `OPENAI_BASE_URL` | endpoint base | `https://api.groq.com/openai/v1` |
 | `OPENAI_MODEL` | modello Llama da usare | `llama-3.3-70b-versatile` |
+| `TURSO_DATABASE_URL` | URL del database Turso (es. `libsql://breakapp-org.turso.io`) | — |
+| `TURSO_AUTH_TOKEN` | token di scrittura Turso | — |
+
+> **Database degli account.** Il server salva username e password (hash) in un database.
+> Se imposti `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`, usa **Turso** (SQLite nel cloud,
+> gratis, senza carta): gli account restano salvati anche dopo i deploy. Se non li imposti,
+> usa un **SQLite locale su file** — ma su hosting con disco effimero (es. Render free) il
+> file viene azzerato a ogni deploy, quindi gli account "spariscono". Turso è la scelta
+> consigliata per la persistenza reale. Crea il DB su https://turso.tech (Dashboard → New
+> database → Generate Token con permesso WRITE).
 | `SQLITE_DB` | percorso del file database degli account | `./data/app.db` |
 
 Gli **account** degli utenti (nome utente + password crittografata) sono salvati in un
