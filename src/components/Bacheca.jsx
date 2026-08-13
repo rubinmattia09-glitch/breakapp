@@ -3,6 +3,37 @@ import React, { useState, useEffect } from 'react';
 // Bacheca anonima: gli utenti leggono i pensieri/lettere lasciati dagli altri
 // e possono pubblicarne uno nuovo, senza alcun nome. I messaggi vivono nel
 // database condiviso (Turso/SQLite), non sul telefono di ciascuno.
+// I messaggi lunghi vengono accorciati con "…" e si aprono con "Espandi".
+const LIMIT = 280;
+
+function truncate(text, limit) {
+  if (text.length <= limit) return text;
+  const cut = text.lastIndexOf(' ', limit);
+  const idx = cut > 0 ? cut : limit;
+  return text.slice(0, idx).trimEnd() + '…';
+}
+
+function PostCard({ post }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = post.body.length > LIMIT;
+  const shown = !isLong || expanded ? post.body : truncate(post.body, LIMIT);
+  return (
+    <article className="board-card">
+      <p className="board-body">{shown}</p>
+      {isLong && (
+        <button
+          type="button"
+          className="board-expand"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          {expanded ? 'Riduci' : 'Espandi'}
+        </button>
+      )}
+      <span className="board-date">{formatDate(post.created_at)}</span>
+    </article>
+  );
+}
+
 export default function Bacheca({ onBack }) {
   const [posts, setPosts] = useState([]);
   const [body, setBody] = useState('');
@@ -94,10 +125,7 @@ export default function Bacheca({ onBack }) {
           <p className="empty">Ancora nessun messaggio. Sii il primo a lasciarne uno.</p>
         )}
         {posts.map((p) => (
-          <article className="board-card" key={p.id}>
-            <p className="board-body">{p.body}</p>
-            <span className="board-date">{formatDate(p.created_at)}</span>
-          </article>
+          <PostCard key={p.id} post={p} />
         ))}
       </div>
     </section>
