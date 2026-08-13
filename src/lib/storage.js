@@ -283,10 +283,10 @@ export function isTodayQuestionnaireDone(username, dateKey) {
 export function loadObjective(username) {
   const v = localStorage.getItem(K_OBJECTIVE + username);
   const n = v ? Number(v) : 0;
-  return [5, 15, 30].includes(n) ? n : 0;
+  return [5, 10, 30].includes(n) ? n : 0;
 }
 export function saveObjective(username, days) {
-  if ([5, 15, 30].includes(Number(days))) {
+  if ([5, 10, 30].includes(Number(days))) {
     try {
       localStorage.setItem(K_OBJECTIVE + username, String(days));
     } catch {

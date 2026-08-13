@@ -77,16 +77,17 @@ export const DOMANDE = [
   },
 ];
 
-// Domanda sull'obiettivo personale: si chiede solo la PRIMA volta (quando
+// Domanda sull'obiettivo "no contact": si chiede solo la PRIMA volta (quando
 // l'utente non ha ancora scelto un obiettivo). Va impostata nel primo
 // questionario, non ogni giorno.
 export const DOMANDA_OBIETTIVO = {
   id: 'obiettivo',
-  q: 'Quanti giorni di fila vuoi provare a dedicarti a te stesso/a?',
+  q: 'No contact: qual è il tuo obiettivo?',
+  hint: "Dopo la fine di una relazione, il no contact è importante: tagliare i contatti con l'ex aiuta a ritrovare te stesso/a e a smettere di soffrire per il passato. Inizia da piccoli obiettivi: anche solo 5 giorni fanno la differenza.",
   type: 'single',
   options: [
     { value: '5', label: '5 giorni' },
-    { value: '15', label: '15 giorni' },
+    { value: '10', label: '10 giorni' },
     { value: '30', label: '1 mese' },
   ],
 };
