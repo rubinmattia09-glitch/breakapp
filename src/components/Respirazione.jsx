@@ -14,47 +14,18 @@ const PHASES = [
 export default function Respirazione({ onBack }) {
   const [running, setRunning] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
-  const [audio, setAudio] = useState(false);
   const timerRef = useRef(null);
 
-  // Parla la fase corrente (voce del browser, italiano) se l'opzione è attiva.
-  const speak = (text) => {
-    if (!audio) return;
-    try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'it-IT';
-        u.rate = 0.9;
-        window.speechSynthesis.speak(u);
-      }
-    } catch {
-      /* voce non disponibile: ignoriamo */
-    }
-  };
-
-  // Avanza tra le fasi finché l'esercizio è in esecuzione.
+  // Avanza tra le fasi finché l'esercizio è in esecuzione. La scritta sopra al
+  // cerchio (Inspira / Trattieni / Espira / Riposa) guida l'utente passo passo.
   useEffect(() => {
     if (!running) return;
     const phase = PHASES[phaseIdx];
-    speak(phase.label);
     timerRef.current = setTimeout(() => {
       setPhaseIdx((i) => (i + 1) % PHASES.length);
     }, phase.dur);
     return () => clearTimeout(timerRef.current);
-  }, [running, phaseIdx, audio]);
-
-  // Ferma tutto se si esce dalla schermata.
-  useEffect(
-    () => () => {
-      try {
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      } catch {
-        /* noop */
-      }
-    },
-    []
-  );
+  }, [running, phaseIdx]);
 
   const start = () => {
     setPhaseIdx(0);
@@ -62,11 +33,6 @@ export default function Respirazione({ onBack }) {
   };
   const stop = () => {
     setRunning(false);
-    try {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    } catch {
-      /* noop */
-    }
   };
 
   const phase = PHASES[phaseIdx];
@@ -89,7 +55,9 @@ export default function Respirazione({ onBack }) {
       </p>
 
       <div className="breath-stage">
-        <div className="breath-label">{label}</div>
+        <div className="breath-label" aria-live="polite">
+          {label}
+        </div>
         <div
           className="breath-circle"
           style={{ transform: `scale(${scale})`, transitionDuration: `${phase.dur}ms` }}
@@ -107,14 +75,6 @@ export default function Respirazione({ onBack }) {
             Ferma
           </button>
         )}
-        <label className="resp-audio" title="Fai leggere le fasi a voce alta">
-          <input
-            type="checkbox"
-            checked={audio}
-            onChange={(e) => setAudio(e.target.checked)}
-          />
-          🔊 Voce guida
-        </label>
       </div>
 
       <p className="resp-note">
