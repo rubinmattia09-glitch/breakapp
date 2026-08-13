@@ -23,8 +23,8 @@ function chatProxyPlugin() {
           try {
             const { messages, persona, memory } = JSON.parse(body || '{}');
             const apiKey = process.env.OPENAI_API_KEY;
-            const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-            const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+            const base = (process.env.OPENAI_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/$/, '');
+            const model = process.env.OPENAI_MODEL || 'llama-3.3-70b-versatile';
 
             if (!apiKey) {
               res.statusCode = 400;
@@ -85,8 +85,8 @@ function chatProxyPlugin() {
           try {
             const { messages, persona, profile } = JSON.parse(body || '{}');
             const apiKey = process.env.OPENAI_API_KEY;
-            const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-            const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+            const base = (process.env.OPENAI_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/$/, '');
+            const model = process.env.OPENAI_MODEL || 'llama-3.3-70b-versatile';
             if (!apiKey) {
               res.statusCode = 400;
               res.setHeader('Content-Type', 'application/json');

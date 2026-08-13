@@ -27,7 +27,7 @@ mette a disposizione tre **psicologi AI** con cui conversare.
    cp .env.example .env
    ```
    Poi compila `OPENAI_API_KEY`, `OPENAI_BASE_URL` e `OPENAI_MODEL`.
-   Funziona con OpenAI, Groq, Together, Ollama (gateway `/v1`), LocalAI, ecc.
+   Funziona con Groq (cloud, gratis, modelli Llama) e Ollama in locale (gratis, nessuna chiave).
 3. Avvia:
    ```bash
    npm run dev
@@ -46,9 +46,9 @@ Variabili d'ambiente da impostare **nell'hosting** (mai nel repo):
 | Variabile | Cosa fa | Default |
 | --- | --- | --- |
 | `PORT` | porta di ascolto | `3000` |
-| `OPENAI_API_KEY` | chiave del modello (obbligatoria per la chat) | — |
-| `OPENAI_BASE_URL` | endpoint base OpenAI-compatibile | `https://api.openai.com/v1` |
-| `OPENAI_MODEL` | modello da usare | `gpt-4o-mini` |
+| `OPENAI_API_KEY` | chiave di Groq (obbligatoria per la chat, formato `gsk-...`) | — |
+| `OPENAI_BASE_URL` | endpoint base | `https://api.groq.com/openai/v1` |
+| `OPENAI_MODEL` | modello Llama da usare | `llama-3.3-70b-versatile` |
 
 ### Opzione A — Render.com (semplice, free)
 1. Crea un repo Git e pusha questo progetto (senza `.env`).
@@ -60,9 +60,9 @@ Variabili d'ambiente da impostare **nell'hosting** (mai nel repo):
 ```bash
 docker build -t breakapp .
 docker run -d -p 3000:3000 \
-  -e OPENAI_API_KEY=sk-... \
-  -e OPENAI_BASE_URL=https://api.openai.com/v1 \
-  -e OPENAI_MODEL=gpt-4o-mini \
+  -e OPENAI_API_KEY=gsk-... \
+  -e OPENAI_BASE_URL=https://api.groq.com/openai/v1 \
+  -e OPENAI_MODEL=llama-3.3-70b-versatile \
   breakapp
 ```
 Oppure su Railway/Heroku basta il `Procfile` (`web: node server.js`) + le env var.

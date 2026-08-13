@@ -55,8 +55,8 @@ const HOST = process.env.HOST || '0.0.0.0';
 function llmConfig() {
   return {
     apiKey: process.env.OPENAI_API_KEY || '',
-    base: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    base: (process.env.OPENAI_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, ''),
+    model: process.env.OPENAI_MODEL || 'llama-3.3-70b-versatile',
   };
 }
 
