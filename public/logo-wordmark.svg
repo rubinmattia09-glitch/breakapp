@@ -5,6 +5,20 @@
       <stop offset="1" stop-color="#e35d6a"/>
     </linearGradient>
   </defs>
-  <path d="M32 56 C32 56 8 40 8 22 C8 12 15 6 24 6 C29 6 31.5 8.5 32 11 C32.5 8.5 35 6 40 6 C49 6 56 12 56 22 C56 40 32 56 32 56 Z" fill="url(#heartGrad)"/>
+  <g>
+    <path d="M32 56 C32 56 8 40 8 22 C8 12 15 6 24 6 C29 6 31.5 8.5 32 11 C32.5 8.5 35 6 40 6 C49 6 56 12 56 22 C56 40 32 56 32 56 Z" fill="url(#heartGrad)"/>
+    <g transform="translate(32,27) rotate(-14)">
+      <rect x="-22" y="-6" width="44" height="12" rx="6" ry="6" fill="#f7e9d2" stroke="#caa874" stroke-width="0.8"/>
+      <g fill="#c9a878">
+        <circle cx="-15" cy="-2.6" r="0.7"/><circle cx="-11" cy="-2.6" r="0.7"/>
+        <circle cx="-15" cy="2.6" r="0.7"/><circle cx="-11" cy="2.6" r="0.7"/>
+        <circle cx="11" cy="-2.6" r="0.7"/><circle cx="15" cy="-2.6" r="0.7"/>
+        <circle cx="11" cy="2.6" r="0.7"/><circle cx="15" cy="2.6" r="0.7"/>
+      </g>
+      <rect x="-7" y="-4.5" width="14" height="9" rx="2.5" ry="2.5" fill="#ebcd95" stroke="#a87842" stroke-width="0.6"/>
+      <line x1="-5" y1="-3" x2="5" y2="3" stroke="#caa874" stroke-width="0.4" opacity="0.55"/>
+      <line x1="5" y1="-3" x2="-5" y2="3" stroke="#caa874" stroke-width="0.4" opacity="0.55"/>
+    </g>
+  </g>
   <text x="68" y="43" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="1.5" fill="#3a2730">BREAKAPP</text>
 </svg>
