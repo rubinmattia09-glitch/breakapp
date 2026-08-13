@@ -16,15 +16,6 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
 
   const [done, setDone] = useState(() => (todayObj ? todayObj.done : {}));
 
-  // Cuorino commenta le attività del giorno con frasi motivazionali.
-  const [mascot, setMascot] = useState(() => {
-    if (tasks.length === 0)
-      return { text: 'Completa il questionario per sbloccare i compiti giornalieri.', mood: 'happy' };
-    if (completato)
-      return { text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' };
-    return { text: 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.', mood: 'happy' };
-  });
-
   useEffect(() => {
     const obj = loadDaily(user, key) || { done: {} };
     saveDaily(user, key, { ...obj, done });
@@ -52,6 +43,15 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
   const fatti = tasks.filter((t) => done[t.id]).length;
   const personaConsigliato = tasks.length ? tasks[0].persona : 'elena';
   const completato = tasks.length > 0 && fatti === tasks.length;
+
+  // Cuorino commenta le attività del giorno con frasi motivazionali.
+  const [mascot, setMascot] = useState(() => {
+    if (tasks.length === 0)
+      return { text: 'Completa il questionario per sbloccare i compiti giornalieri.', mood: 'happy' };
+    if (completato)
+      return { text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' };
+    return { text: 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.', mood: 'happy' };
+  });
 
   return (
     <section className="oggi">
