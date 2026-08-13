@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PERSONAS } from '../data/personas.js';
 import { MascotBubble } from './Mascot.jsx';
+import { MOTIVATIONAL } from '../data/motivational.js';
 import { dailyTasksFor, loadDaily, saveDaily, dateKey } from '../lib/dailytasks.js';
 
 // Schermata "Oggi": mostra i compiti del giorno (calcolati dal percorso) e
@@ -15,18 +16,37 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
 
   const [done, setDone] = useState(() => (todayObj ? todayObj.done : {}));
 
+  // Cuorino commenta le attività del giorno con frasi motivazionali.
+  const [mascot, setMascot] = useState(() => {
+    if (tasks.length === 0)
+      return { text: 'Completa il questionario per sbloccare i compiti giornalieri.', mood: 'happy' };
+    if (completato)
+      return { text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' };
+    return { text: 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.', mood: 'happy' };
+  });
+
   useEffect(() => {
     const obj = loadDaily(user, key) || { done: {} };
     saveDaily(user, key, { ...obj, done });
   }, [done, user, key]);
 
   const toggle = (id) => {
-    setDone((p) => {
-      const n = { ...p };
-      if (n[id]) delete n[id];
-      else n[id] = true;
-      return n;
-    });
+    const wasOn = !!done[id];
+    const n = { ...done };
+    if (wasOn) delete n[id];
+    else n[id] = true;
+    setDone(n);
+    if (!wasOn) {
+      const nextFatti = tasks.filter((t) => n[t.id]).length;
+      if (tasks.length > 0 && nextFatti === tasks.length) {
+        setMascot({ text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' });
+      } else {
+        const pick = MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)];
+        setMascot({ text: pick.text, mood: pick.mood || 'happy' });
+      }
+    } else {
+      setMascot({ text: 'Nessun problema, rifalla quando vuoi.', mood: 'think' });
+    }
   };
 
   const fatti = tasks.filter((t) => done[t.id]).length;
@@ -41,12 +61,8 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
         passi, tutti i giorni.
       </p>
 
-      <MascotBubble mood={completato ? 'cheer' : 'happy'} size={64}>
-        {tasks.length === 0
-          ? 'Completa il questionario per sbloccare i compiti giornalieri.'
-          : completato
-            ? 'Tutto fatto per oggi. Sei grande!'
-            : 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.'}
+      <MascotBubble mood={mascot.mood} size={64}>
+        {mascot.text}
       </MascotBubble>
 
       <div className="daily-date">{key}</div>
