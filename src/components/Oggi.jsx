@@ -3,10 +3,11 @@ import { PERSONAS } from '../data/personas.js';
 import { MascotBubble } from './Mascot.jsx';
 import { MOTIVATIONAL } from '../data/motivational.js';
 import { dailyTasksFor, loadDaily, saveDaily, dateKey } from '../lib/dailytasks.js';
+import { parseBreathing } from '../lib/breathing.js';
 
 // Schermata "Oggi": mostra i compiti del giorno (calcolati dal percorso) e
 // invita a fare il questionario giornaliero quando non è ancora stato compilato.
-export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
+export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRespira }) {
   const d = new Date();
   const key = todayKey || dateKey(d);
   const tasks = dailyTasksFor(result, d);
@@ -85,6 +86,7 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
         <ul className="attivita daily-tasks">
           {tasks.map((t) => {
             const on = !!done[t.id];
+            const breath = parseBreathing(t.text);
             return (
               <li key={t.id}>
                 <label className={`check ${on ? 'on' : ''}`}>
@@ -93,6 +95,15 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
                   <span className="txt">{t.text}</span>
                 </label>
                 <span className="daily-mod">{t.modulo}</span>
+                {breath && onRespira && (
+                  <button
+                    type="button"
+                    className="ghost small breath-shortcut"
+                    onClick={() => onRespira(breath)}
+                  >
+                    🫁 Respira con me
+                  </button>
+                )}
               </li>
             );
           })}

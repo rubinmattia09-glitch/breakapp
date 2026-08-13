@@ -69,6 +69,7 @@ export default function App() {
   const [showEmergency, setShowEmergency] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [respiraBack, setRespiraBack] = useState('welcome');
+  const [respiraPattern, setRespiraPattern] = useState(null);
 
   const todayKey = dateKey(new Date());
   const todayDone = user ? isTodayQuestionnaireDone(user, todayKey) : true;
@@ -169,7 +170,9 @@ export default function App() {
   };
 
   // Apre l'esercizio di respirazione, ricordandosi da dove veniamo (per il "Indietro").
-  const openRespira = () => {
+  // `pattern` (opzionale) adatta il ritmo al respiro dell'attività giornaliera.
+  const openRespira = (pattern = null) => {
+    setRespiraPattern(pattern);
     setRespiraBack(screen);
     setScreen('respirazione');
   };
@@ -335,6 +338,7 @@ export default function App() {
             todayKey={todayKey}
             onChatWith={openChatWith}
             onDaily={() => setScreen('quiz-giornaliero')}
+            onRespira={openRespira}
           />
         )}
 
@@ -360,7 +364,9 @@ export default function App() {
 
         {screen === 'diario' && user && <Diario user={user} />}
 
-        {screen === 'respirazione' && <Respirazione onBack={() => setScreen(respiraBack)} />}
+        {screen === 'respirazione' && (
+          <Respirazione pattern={respiraPattern} onBack={() => setScreen(respiraBack)} />
+        )}
 
         {screen === 'bacheca' && <Bacheca onBack={() => setScreen('welcome')} />}
       </main>

@@ -1,33 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { buildPhases, DEFAULT_PATTERN, describePattern } from '../lib/breathing.js';
 
 // Esercizio di respirazione per ansia/panico: un cerchio rosso che si allarga
 // durante l'inspirazione e si restringe durante l'espirazione. L'espirazione è
 // più lunga dell'inspirazione perché aiuta il sistema parasimpatico a calmarsi.
-// Fasi (durata in ms) e scala del cerchio per ogni fase.
-const PHASES = [
-  { key: 'inspira', label: 'Inspira', dur: 4000, scale: 1 },
-  { key: 'trattieni', label: 'Trattieni', dur: 2000, scale: 1 },
-  { key: 'espira', label: 'Espira', dur: 6000, scale: 0.55 },
-  { key: 'riposa', label: 'Riposa', dur: 1000, scale: 0.55 },
-];
+//
+// `pattern` (opzionale) permette di adattare il ritmo a un'attività specifica:
+//   { inhale, hold, exhale, rest, cycles }  (durate in ms, cycles=0 = illimitato).
+// Se non passato, si usa il ritmo "calmante" di default.
+export default function Respirazione({ pattern, onBack }) {
+  const effPattern = pattern || DEFAULT_PATTERN;
+  const phases = useMemo(() => buildPhases(effPattern), [effPattern]);
+  const limited = effPattern.cycles > 0;
 
-export default function Respirazione({ onBack }) {
   const [running, setRunning] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
+  const [cyclesDone, setCyclesDone] = useState(0);
   const timerRef = useRef(null);
 
-  // Avanza tra le fasi finché l'esercizio è in esecuzione. La scritta sopra al
-  // cerchio (Inspira / Trattieni / Espira / Riposa) guida l'utente passo passo.
+  // Avanza tra le fasi finché l'esercizio è in esecuzione. Ad ogni giro completo
+  // (tornando alla fase 0) conta un "respiro"; se il pattern è limitato, ci si
+  // ferma al raggiungimento del numero di cicli richiesto dall'attività.
   useEffect(() => {
     if (!running) return;
-    const phase = PHASES[phaseIdx];
+    const phase = phases[phaseIdx];
     timerRef.current = setTimeout(() => {
-      setPhaseIdx((i) => (i + 1) % PHASES.length);
+      const nextIdx = (phaseIdx + 1) % phases.length;
+      if (nextIdx === 0) {
+        const nc = cyclesDone + 1;
+        setCyclesDone(nc);
+        if (limited && nc >= effPattern.cycles) {
+          setRunning(false);
+          setPhaseIdx(0);
+          return;
+        }
+      }
+      setPhaseIdx(nextIdx);
     }, phase.dur);
     return () => clearTimeout(timerRef.current);
-  }, [running, phaseIdx]);
+  }, [running, phaseIdx, phases, cyclesDone, limited, effPattern.cycles]);
 
   const start = () => {
+    setCyclesDone(0);
     setPhaseIdx(0);
     setRunning(true);
   };
@@ -35,9 +49,10 @@ export default function Respirazione({ onBack }) {
     setRunning(false);
   };
 
-  const phase = PHASES[phaseIdx];
+  const completed = limited && cyclesDone >= effPattern.cycles && !running;
+  const phase = phases[phaseIdx];
   const scale = running ? phase.scale : 0.55;
-  const label = running ? phase.label : 'Pronto?';
+  const label = running ? phase.label : completed ? 'Fatto!' : 'Pronto?';
 
   return (
     <section className="respirazione">
@@ -54,6 +69,12 @@ export default function Respirazione({ onBack }) {
         L&apos;espirazione è più lunga, per aiutarti a ritrovare la calma.
       </p>
 
+      {pattern && (
+        <p className="resp-pattern">
+          <strong>Ritmo dell&apos;attività:</strong> {describePattern(effPattern)}
+        </p>
+      )}
+
       <div className="breath-stage">
         <div className="breath-label" aria-live="polite">
           {label}
@@ -63,12 +84,19 @@ export default function Respirazione({ onBack }) {
           style={{ transform: `scale(${scale})`, transitionDuration: `${phase.dur}ms` }}
           aria-hidden="true"
         />
+        {limited && (
+          <div className="resp-counter" aria-live="polite">
+            {completed
+              ? `Hai completato ${effPattern.cycles} respiri 🎉`
+              : `Respiro ${cyclesDone + (running ? 1 : 0)} / ${effPattern.cycles}`}
+          </div>
+        )}
       </div>
 
       <div className="resp-controls">
         {!running ? (
           <button className="primary" type="button" onClick={start}>
-            Inizia
+            {completed ? 'Rifai' : 'Inizia'}
           </button>
         ) : (
           <button className="ghost" type="button" onClick={stop}>
