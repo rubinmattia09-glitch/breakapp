@@ -18,6 +18,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { PERSONAS } from './src/data/personas.js';
 
@@ -58,6 +59,130 @@ function llmConfig() {
     base: (process.env.OPENAI_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, ''),
     model: process.env.OPENAI_MODEL || 'llama-3.3-70b-versatile',
   };
+}
+
+// --- Database SQLite (nativo, nessuna dipendenza) per gli ACCOUNT ---
+// NOTA: su alcuni host (es. Render free) il disco è azzerato a ogni deploy,
+// quindi il file viene ricreato vuoto e gli account "spariscono" finché non ti
+// registri di nuovo. Per una persistenza reale serve un disco persistente o un
+// DB cloud (es. Turso). Qui implementiamo comunque il DB lato server.
+const DB_PATH = process.env.SQLITE_DB || path.join(__dirname, 'data', 'app.db');
+let db = null; // DatabaseSync quando disponibile
+let dbMode = 'none'; // 'sqlite' | 'memory'
+let memUsers = null; // fallback in memoria se node:sqlite non è disponibile
+
+async function initDb() {
+  try {
+    const sqlite = await import('node:sqlite');
+    const { DatabaseSync } = sqlite;
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    db = new DatabaseSync(DB_PATH);
+    db.exec(
+      `CREATE TABLE IF NOT EXISTS users (
+         username   TEXT PRIMARY KEY,
+         name       TEXT NOT NULL,
+         salt       TEXT NOT NULL,
+         hash       TEXT NOT NULL,
+         created_at TEXT NOT NULL
+       )`
+    );
+    dbMode = 'sqlite';
+    console.log('Database SQLite attivo: ' + DB_PATH);
+  } catch (e) {
+    db = null;
+    dbMode = 'memory';
+    memUsers = new Map();
+    console.warn(
+      'SQLite non disponibile (' +
+        (e && e.message ? e.message : e) +
+        '). Uso memoria: gli account non persistono tra i riavvii.'
+    );
+  }
+}
+
+function sha256hex(input) {
+  return crypto.createHash('sha256').update(input).digest('hex');
+}
+function serverHash(password, salt) {
+  return sha256hex(password + ':' + salt);
+}
+
+// Registra un utente nel DB (o in memoria come fallback). Ritorna { status, body }.
+function dbRegister({ username, name, password }) {
+  username = (username || '').trim();
+  if (username.length < 3)
+    return { status: 400, body: { ok: false, error: 'Scegli un nome utente di almeno 3 caratteri.' } };
+  if (!/^[a-zA-Z0-9_.-]+$/.test(username))
+    return { status: 400, body: { ok: false, error: 'Nome utente: solo lettere, numeri e . _ -' } };
+  if (!password || password.length < 4)
+    return { status: 400, body: { ok: false, error: 'La password deve avere almeno 4 caratteri.' } };
+  const finalName = (name || username).trim();
+  if (db) {
+    const exists = db.prepare('SELECT 1 FROM users WHERE username = ?').get(username);
+    if (exists) return { status: 409, body: { ok: false, error: 'Questo nome utente è già registrato.' } };
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = serverHash(password, salt);
+    db.prepare('INSERT INTO users (username, name, salt, hash, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      username,
+      finalName,
+      salt,
+      hash,
+      new Date().toISOString()
+    );
+    return { status: 200, body: { ok: true } };
+  }
+  if (memUsers.has(username))
+    return { status: 409, body: { ok: false, error: 'Questo nome utente è già registrato.' } };
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = serverHash(password, salt);
+  memUsers.set(username, { name: finalName, salt, hash });
+  return { status: 200, body: { ok: true } };
+}
+
+// Verifica le credenziali. Ritorna { status, body }.
+function dbLogin({ username, password }) {
+  username = (username || '').trim();
+  const rec = db
+    ? db.prepare('SELECT name, salt, hash FROM users WHERE username = ?').get(username)
+    : memUsers
+      ? memUsers.get(username)
+      : null;
+  if (!rec) return { status: 401, body: { ok: false, error: 'Utente non trovato.' } };
+  if (serverHash(password, rec.salt) !== rec.hash)
+    return { status: 401, body: { ok: false, error: 'Password errata.' } };
+  return { status: 200, body: { ok: true, name: rec.name } };
+}
+
+async function handleAuthRegister(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try {
+    p = await readJson(req);
+  } catch (e) {
+    return sendJson(res, 400, { error: e.message });
+  }
+  const r = dbRegister(p);
+  return sendJson(res, r.status, r.body);
+}
+
+async function handleAuthLogin(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try {
+    p = await readJson(req);
+  } catch (e) {
+    return sendJson(res, 400, { error: e.message });
+  }
+  const r = dbLogin(p);
+  return sendJson(res, r.status, r.body);
 }
 
 // --- Helper: leggi il body JSON della richiesta ---
@@ -242,6 +367,7 @@ function handleHealth(res) {
     base,
     model,
     dist: fs.existsSync(DIST),
+    db: dbMode,
   });
 }
 
@@ -312,6 +438,8 @@ function serveStatic(req, res) {
 const server = http.createServer((req, res) => {
   const pathname = (req.url || '/').split('?')[0];
   if (pathname === '/api/health') return handleHealth(res);
+  if (pathname === '/api/auth/register') return handleAuthRegister(req, res);
+  if (pathname === '/api/auth/login') return handleAuthLogin(req, res);
   if (pathname === '/api/chat') return handleChat(req, res);
   if (pathname === '/api/memory') return handleMemory(req, res);
   if (pathname.startsWith('/api/')) {
@@ -323,9 +451,14 @@ const server = http.createServer((req, res) => {
   return serveStatic(req, res);
 });
 
-server.listen(PORT, HOST, () => {
-  const { apiKey, base, model } = llmConfig();
-  console.log(`\nBREAKAPP in esecuzione su http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
-  console.log(`Chat AI: ${apiKey ? 'CONFIGURATA' : 'NON configurata (manca OPENAI_API_KEY)'}`);
-  console.log(`Modello: ${model}  ·  Endpoint: ${base}\n`);
-});
+async function main() {
+  await initDb();
+  server.listen(PORT, HOST, () => {
+    const { apiKey, base, model } = llmConfig();
+    console.log(`\nBREAKAPP in esecuzione su http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+    console.log(`Chat AI: ${apiKey ? 'CONFIGURATA' : 'NON configurata (manca OPENAI_API_KEY)'}`);
+    console.log(`Database account: ${dbMode === 'sqlite' ? 'SQLite (' + DB_PATH + ')' : 'memoria (non persistente)'}`);
+    console.log(`Modello: ${model}  ·  Endpoint: ${base}\n`);
+  });
+}
+main();

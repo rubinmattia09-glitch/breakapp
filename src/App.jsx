@@ -296,7 +296,7 @@ export default function App() {
       {showTutorial && screen === 'percorso' && <Tutorial onClose={closeTutorial} />}
 
       <footer className="footer">
-        <strong>Nota importante:</strong> Dopo di Noi è uno strumento di compagnia e cura di sé, non un
+        <strong>Nota importante:</strong> BREAKAPP è uno strumento di compagnia e cura di sé, non un
         sostituto di un professionista della salute mentale. In caso di emergenza chiama il 112 / 118.
       </footer>
     </div>

@@ -73,7 +73,7 @@ export default function Auth({ onLogin, onRegister }) {
         <h2>{tab === 'register' ? 'Crea il tuo account' : 'Bentornato/a'}</h2>
         <p className="lead">
           {tab === 'register'
-            ? 'Ti serve un account per salvare il tuo percorso e restare connesso. Nessun dato lascia questo dispositivo.'
+            ? 'Ti serve un account per salvare il tuo percorso. Le credenziali sono protette e salvate in modo sicuro sul server (la password è crittografata). I tuoi dati personali restano su questo dispositivo.'
             : 'Accedi per ritrovare il tuo percorso, i tuoi compiti e le tue conversazioni.'}
         </p>
 

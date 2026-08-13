@@ -68,27 +68,60 @@ function makeSalt() {
   return [...a].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Chiama un endpoint del server. Se il server non risponde (dev/offline) lancia,
+// così il chiamante può tornare al localStorage.
+async function apiPost(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function registerUser({ username, name, password }) {
   username = (username || '').trim();
   if (!username) return { ok: false, error: 'Scegli un nome utente.' };
-  if (userExists(username)) return { ok: false, error: 'Questo nome utente è già registrato.' };
   if (!password || password.length < 4)
     return { ok: false, error: 'La password deve avere almeno 4 caratteri.' };
-  const salt = makeSalt();
-  const hash = await hashPassword(password, salt);
-  const reg = loadUsers();
-  reg[username] = { name: (name || username).trim(), salt, hash };
-  saveUsers(reg);
-  setSession(username);
-  return { ok: true };
+  // Prova il server (database SQLite). Se non risponde in modo sensato,
+  // resta sul localStorage (modalità sviluppo / offline).
+  try {
+    const r = await apiPost('/api/auth/register', { username, name, password });
+    const j = await r.json().catch(() => null);
+    if (j && typeof j.ok === 'boolean') {
+      if (j.ok) {
+        setSession(username);
+        return { ok: true };
+      }
+      return { ok: false, error: j.error || 'Registrazione non riuscita.' };
+    }
+    throw new Error('server'); // risposta non JSON (es. SPA fallback in dev) -> fallback
+  } catch (e) {
+    // Fallback: registrazione locale.
+    if (userExists(username)) return { ok: false, error: 'Questo nome utente è già registrato.' };
+    const salt = makeSalt();
+    const hash = await hashPassword(password, salt);
+    const reg = loadUsers();
+    reg[username] = { name: (name || username).trim(), salt, hash };
+    saveUsers(reg);
+    setSession(username);
+    return { ok: true };
+  }
 }
 
 export async function verifyUser(username, password) {
   username = (username || '').trim();
-  const u = loadUsers()[username];
-  if (!u) return false;
-  const hash = await hashPassword(password, u.salt);
-  return hash === u.hash;
+  try {
+    const r = await apiPost('/api/auth/login', { username, password });
+    const j = await r.json().catch(() => null);
+    if (j && typeof j.ok === 'boolean') return j.ok === true;
+    throw new Error('server'); // risposta non JSON -> fallback localStorage
+  } catch (e) {
+    const u = loadUsers()[username];
+    if (!u) return false;
+    const hash = await hashPassword(password, u.salt);
+    return hash === u.hash;
+  }
 }
 
 // ---------- Profilo stabile (Q1-2: tempo + chi) ----------

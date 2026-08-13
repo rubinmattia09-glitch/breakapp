@@ -11,3 +11,9 @@ dist
 .workbuddy-ai
 *.log
 npm-debug.log*
+
+# Database SQLite (generato a runtime; non committare)
+data/
+*.sqlite
+*.sqlite-journal
+*.db

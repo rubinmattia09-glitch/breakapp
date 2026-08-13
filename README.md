@@ -1,4 +1,4 @@
-# Dopo di Noi
+# BREAKAPP
 
 App di compagnia e cura di sé dopo la fine di una relazione sentimentale.
 Dopo un breve questionario crea un **percorso personalizzato** (non uguale per tutti) e
@@ -49,6 +49,17 @@ Variabili d'ambiente da impostare **nell'hosting** (mai nel repo):
 | `OPENAI_API_KEY` | chiave di Groq (obbligatoria per la chat, formato `gsk-...`) | — |
 | `OPENAI_BASE_URL` | endpoint base | `https://api.groq.com/openai/v1` |
 | `OPENAI_MODEL` | modello Llama da usare | `llama-3.3-70b-versatile` |
+| `SQLITE_DB` | percorso del file database degli account | `./data/app.db` |
+
+Gli **account** degli utenti (nome utente + password crittografata) sono salvati in un
+database **SQLite** lato server (`node:sqlite`, nativo, nessuna dipendenza esterna). La
+tabella è `users(username, name, salt, hash, created_at)`. Se `node:sqlite` non è disponibile
+il server passa a un archivio in memoria (gli account non persistono tra i riavvii).
+
+> ⚠️ **Persistenza su hosting gratuiti (es. Render free):** il disco è azzerato a ogni
+> deploy, quindi il file SQLite viene ricreato vuoto e gli account "spariscono" finché non
+> ti registri di nuovo. Per una persistenza reale serve un disco persistente o un DB cloud
+> compatibile con SQLite (es. **Turso**, gratis).
 
 ### Opzione A — Render.com (semplice, free)
 1. Crea un repo Git e pusha questo progetto (senza `.env`).
@@ -90,6 +101,8 @@ server.js               # server di produzione: statici + proxy /api/chat, /api/
 ```
 
 ## Privacy
-Le risposte del questionario, il diario e la cronologia chat restano **nel browser**
-di ciascun utente (localStorage, per-utente), e non vengono salvate sul server. I messaggi
-della chat vengono inviati solo al modello che configuri (tramite il proxy lato server).
+Gli **account** (nome utente e password) sono salvati sul server in SQLite: la password non
+viene mai memorizzata in chiaro, ma come hash SHA-256 con salt casuale. Le risposte del
+questionario, il diario e la cronologia chat restano **nel browser** di ciascun utente
+(localStorage, per-utente) e non vengono inviate al server se non per essere elaborate dal
+modello che configuri (tramite il proxy lato server).
