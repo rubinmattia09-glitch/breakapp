@@ -1,0 +1,265 @@
+// Persistenza lato browser (localStorage). Nessun dato lascia il computer.
+// Tutto è per-utente: ogni account ha il proprio profilo, percorso, diario,
+// memoria delle chat e compiti giornalieri. La sessione resta attiva finché
+// l'utente non si disconnette, così l'app "si ricorda" di chi è collegato.
+
+// ---------- Chiavi ----------
+const K_SESSION = 'dn_session'; // username corrente (stringa o null)
+const K_USERS = 'dn_users'; // { username: { name, salt, hash } }
+const K_PROF = 'dn_prof_'; // + username -> { name, tempo, chi }
+const K_PATH = 'dn_path_'; // + username -> result (percorso)
+const K_LASTDAILY = 'dn_lastdaily_'; // + username -> dateKey ultimo questionario
+const K_DAILY = 'dn_daily_'; // + username + ':' + dateKey -> { answers, done }
+const K_DIARIO = 'dn_diario_'; // + username -> [ { id, ts, text } ]
+const K_PROGRESS = 'dn_progress_'; // + username -> { [moduleId]: {...} }
+const K_TUTORIAL = 'dn_tutorial_seen'; // globale (tutorial visto una volta)
+const K_CHAT = 'dn_chat_'; // + username + ':' + personaId -> [ { role, content } ]
+const K_MEMPROF = 'dn_memprof_'; // + username + ':' + personaId -> riassunto AI
+
+// ---------- Account / sessione ----------
+export function getCurrentUser() {
+  try {
+    return localStorage.getItem(K_SESSION) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(username) {
+  if (username) localStorage.setItem(K_SESSION, username);
+  else localStorage.removeItem(K_SESSION);
+}
+
+export function logout() {
+  setSession(null);
+}
+
+export function userExists(username) {
+  return Object.prototype.hasOwnProperty.call(loadUsers(), (username || '').trim());
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(K_USERS) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveUsers(reg) {
+  try {
+    localStorage.setItem(K_USERS, JSON.stringify(reg));
+  } catch {
+    /* ignora */
+  }
+}
+
+// Password mai in chiaro: salt casuale + SHA-256. La sicurezza è locale
+// (protegge da occhiata allo storage del browser), non sostituisce un server.
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder().encode(password + ':' + salt);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function makeSalt() {
+  const a = new Uint8Array(16);
+  crypto.getRandomValues(a);
+  return [...a].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function registerUser({ username, name, password }) {
+  username = (username || '').trim();
+  if (!username) return { ok: false, error: 'Scegli un nome utente.' };
+  if (userExists(username)) return { ok: false, error: 'Questo nome utente è già registrato.' };
+  if (!password || password.length < 4)
+    return { ok: false, error: 'La password deve avere almeno 4 caratteri.' };
+  const salt = makeSalt();
+  const hash = await hashPassword(password, salt);
+  const reg = loadUsers();
+  reg[username] = { name: (name || username).trim(), salt, hash };
+  saveUsers(reg);
+  setSession(username);
+  return { ok: true };
+}
+
+export async function verifyUser(username, password) {
+  username = (username || '').trim();
+  const u = loadUsers()[username];
+  if (!u) return false;
+  const hash = await hashPassword(password, u.salt);
+  return hash === u.hash;
+}
+
+// ---------- Profilo stabile (Q1-2: tempo + chi) ----------
+export function loadProfile(username) {
+  try {
+    return JSON.parse(localStorage.getItem(K_PROF + username) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function saveProfile(username, prof) {
+  if (prof) {
+    try {
+      localStorage.setItem(K_PROF + username, JSON.stringify(prof));
+    } catch {
+      /* ignora */
+    }
+  }
+}
+
+// ---------- Percorso (risultato del questionario, ricalcolato ogni giorno) ----------
+export function loadPath(username) {
+  try {
+    return JSON.parse(localStorage.getItem(K_PATH + username) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function savePath(username, result) {
+  if (result) {
+    try {
+      localStorage.setItem(K_PATH + username, JSON.stringify(result));
+    } catch {
+      /* ignora */
+    }
+  }
+}
+
+// ---------- Diario (per-utente) ----------
+export function loadDiario(username) {
+  try {
+    return JSON.parse(localStorage.getItem(K_DIARIO + username) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function saveDiario(username, arr) {
+  try {
+    localStorage.setItem(K_DIARIO + username, JSON.stringify(arr));
+  } catch {
+    /* ignora */
+  }
+}
+
+// ---------- Progressi del percorso (per-utente) ----------
+export function loadProgress(username) {
+  try {
+    return JSON.parse(localStorage.getItem(K_PROGRESS + username) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+export function saveProgress(username, p) {
+  try {
+    localStorage.setItem(K_PROGRESS + username, JSON.stringify(p));
+  } catch {
+    /* ignora */
+  }
+}
+
+// ---------- Tutorial visto (globale: una volta sola) ----------
+export function loadTutorialSeen() {
+  return localStorage.getItem(K_TUTORIAL) === '1';
+}
+export function saveTutorialSeen() {
+  localStorage.setItem(K_TUTORIAL, '1');
+}
+
+// ---------- Memoria delle conversazioni con gli psicologi AI (per utente + personaggio) ----------
+export function loadChat(username, personaId) {
+  try {
+    return JSON.parse(localStorage.getItem(K_CHAT + username + ':' + personaId) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function saveChat(username, personaId, messages) {
+  try {
+    localStorage.setItem(K_CHAT + username + ':' + personaId, JSON.stringify(messages));
+  } catch {
+    /* quota piena: ignoriamo silenziosamente */
+  }
+}
+
+export function loadMemoryProfile(username, personaId) {
+  return localStorage.getItem(K_MEMPROF + username + ':' + personaId) || '';
+}
+
+export function saveMemoryProfile(username, personaId, text) {
+  if (text && text.trim()) {
+    try {
+      localStorage.setItem(K_MEMPROF + username + ':' + personaId, text.trim());
+    } catch {
+      /* ignora */
+    }
+  }
+}
+
+export function clearMemory(username) {
+  Object.keys(localStorage)
+    .filter(
+      (k) =>
+        k.startsWith(K_CHAT + username + ':') || k.startsWith(K_MEMPROF + username + ':')
+    )
+    .forEach((k) => localStorage.removeItem(k));
+}
+
+// ---------- Questionario giornaliero + compiti (per-utente, per-data) ----------
+// Il record giornaliero contiene sia le risposte del questionario sia lo stato
+// di spunta dei compiti: { answers: {...}, done: { taskId: true } }.
+export function loadDaily(username, dateKey) {
+  try {
+    return JSON.parse(localStorage.getItem(K_DAILY + username + ':' + dateKey) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function saveDaily(username, dateKey, obj) {
+  try {
+    localStorage.setItem(K_DAILY + username + ':' + dateKey, JSON.stringify(obj));
+  } catch {
+    /* ignora */
+  }
+}
+
+export function lastDailyKey(username) {
+  return localStorage.getItem(K_LASTDAILY + username) || null;
+}
+
+export function saveLastDaily(username, dateKey) {
+  localStorage.setItem(K_LASTDAILY + username, dateKey);
+}
+
+// Vero quando il questionario di oggi è stato compilato (ha le risposte).
+export function isTodayQuestionnaireDone(username, dateKey) {
+  const o = loadDaily(username, dateKey);
+  return !!(o && o.answers);
+}
+
+// ---------- Reset completo dei dati di un utente (mantiene l'account) ----------
+export function clearAll(username) {
+  if (!username) return;
+  [
+    K_PROF + username,
+    K_PATH + username,
+    K_LASTDAILY + username,
+    K_DIARIO + username,
+    K_PROGRESS + username,
+  ].forEach((k) => localStorage.removeItem(k));
+  Object.keys(localStorage)
+    .filter(
+      (k) =>
+        k.startsWith(K_DAILY + username + ':') ||
+        k.startsWith(K_CHAT + username + ':') ||
+        k.startsWith(K_MEMPROF + username + ':')
+    )
+    .forEach((k) => localStorage.removeItem(k));
+}

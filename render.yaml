@@ -1,0 +1,18 @@
+# Configurazione per Render.com (https://render.com)
+# 1) Collega il repo GitHub.
+# 2) Render crea un Web Service partendo da questo file.
+# 3) IMPOSTA la variabile OPENAI_API_KEY nella dashboard (non va nel repo!).
+#    Le altre sono già preimpostate ma puoi cambiarle.
+services:
+  - type: web
+    name: breakapp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    env:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini

@@ -1,0 +1,25 @@
+{
+  "name": "dopo-di-noi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "App di compagnia e cura di sé dopo una rottura sentimentale",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "dotenv": "^16.4.7",
+    "vite": "^5.4.11"
+  }
+}

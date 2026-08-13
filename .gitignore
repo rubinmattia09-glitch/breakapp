@@ -1,0 +1,13 @@
+# Dipendenze e build
+node_modules
+dist
+
+# Segreti: MAI caricare le chive API!
+.env
+.env.openai
+.env.*
+
+# Dati interni dell'assistente / log
+.workbuddy-ai
+*.log
+npm-debug.log*
