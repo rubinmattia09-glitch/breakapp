@@ -4,7 +4,7 @@ import { CRISI } from '../lib/pathway.js';
 // Popup di emergenza mostrato quando l'utente segnala pensieri di autolesionismo
 // (risposta "a volte" o "sì" all'ultima domanda del questionario).
 // Ha una X in alto a destra per chiuderlo. I numeri sono cliccabili (tel:).
-export default function EmergencyPopup({ onClose }) {
+export default function EmergencyPopup({ onClose, onRespira }) {
   return (
     <div
       className="emergency-overlay"
@@ -40,6 +40,11 @@ export default function EmergencyPopup({ onClose }) {
         <button className="primary" onClick={onClose}>
           Ho capito, chiudi
         </button>
+        {onRespira && (
+          <button className="ghost" onClick={onRespira}>
+            🫁 Respira con me
+          </button>
+        )}
       </div>
     </div>
   );

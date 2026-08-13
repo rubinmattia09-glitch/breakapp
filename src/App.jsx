@@ -8,6 +8,7 @@ import Diario from './components/Diario.jsx';
 import Oggi from './components/Oggi.jsx';
 import Tutorial, { CHAT_STEPS } from './components/Tutorial.jsx';
 import EmergencyPopup from './components/EmergencyPopup.jsx';
+import Respirazione from './components/Respirazione.jsx';
 import { DOMANDE, DOMANDA_OBIETTIVO } from './data/questionario.js';
 import { computePathway } from './lib/pathway.js';
 import { dateKey } from './lib/dailytasks.js';
@@ -66,6 +67,7 @@ export default function App() {
   const [showChatTutorial, setShowChatTutorial] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [respiraBack, setRespiraBack] = useState('welcome');
 
   const todayKey = dateKey(new Date());
   const todayDone = user ? isTodayQuestionnaireDone(user, todayKey) : true;
@@ -165,6 +167,12 @@ export default function App() {
     saveTutorialSeen();
   };
 
+  // Apre l'esercizio di respirazione, ricordandosi da dove veniamo (per il "Indietro").
+  const openRespira = () => {
+    setRespiraBack(screen);
+    setScreen('respirazione');
+  };
+
   return (
     <div className="app">
       <header className="topbar">
@@ -246,6 +254,15 @@ export default function App() {
                   >
                     Diario
                   </button>
+                  <button
+                    className={screen === 'respirazione' ? 'active' : ''}
+                    onClick={() => {
+                      openRespira();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Respirazione
+                  </button>
                 </nav>
                 <div className="menu-foot">
                   <span className="who" title={user}>
@@ -275,6 +292,7 @@ export default function App() {
             todayDone={todayDone}
             onDaily={() => setScreen('quiz-giornaliero')}
             onOggi={() => setScreen('oggi')}
+            onRespira={openRespira}
           />
         )}
 
@@ -331,6 +349,8 @@ export default function App() {
         )}
 
         {screen === 'diario' && user && <Diario user={user} />}
+
+        {screen === 'respirazione' && <Respirazione onBack={() => setScreen(respiraBack)} />}
       </main>
 
       {showTutorial && screen === 'percorso' && <Tutorial onClose={closeTutorial} />}
@@ -339,7 +359,15 @@ export default function App() {
         <Tutorial steps={CHAT_STEPS} onClose={closeChatTutorial} />
       )}
 
-      {showEmergency && <EmergencyPopup onClose={() => setShowEmergency(false)} />}
+      {showEmergency && (
+        <EmergencyPopup
+          onClose={() => setShowEmergency(false)}
+          onRespira={() => {
+            setShowEmergency(false);
+            openRespira();
+          }}
+        />
+      )}
 
       <footer className="footer">
         <strong>Nota importante:</strong> BREAKAPP è uno strumento di compagnia e cura di sé, non un

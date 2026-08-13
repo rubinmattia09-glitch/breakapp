@@ -1,7 +1,7 @@
 import React from 'react';
 import { CRISI } from '../lib/pathway.js';
 
-export default function Welcome({ todayDone, onDaily, onOggi }) {
+export default function Welcome({ todayDone, onDaily, onOggi, onRespira }) {
   return (
     <section className="welcome">
       {!todayDone && (
@@ -62,6 +62,11 @@ export default function Welcome({ todayDone, onDaily, onOggi }) {
         <button className="primary" onClick={todayDone ? onOggi : onDaily}>
           {todayDone ? 'Le attività di oggi' : 'Come ti senti oggi?'}
         </button>
+        {onRespira && (
+          <button className="ghost respira-quick" onClick={onRespira}>
+            🫁 Respira un momento
+          </button>
+        )}
       </div>
 
       <div className="cards">
