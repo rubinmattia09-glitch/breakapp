@@ -171,6 +171,16 @@ export default function App() {
         <div className="brand">BREAKAPP</div>
         {user && (
           <>
+            {screen === 'chat' && (
+              <button
+                type="button"
+                className="ghost small tut-help topbar-help"
+                onClick={() => setShowChatTutorial(true)}
+                title="Come funziona la chat con gli assistenti"
+              >
+                Come funziona?
+              </button>
+            )}
             <button
               className={`hamburger ${menuOpen ? 'open' : ''}`}
               aria-label="Apri il menu"
@@ -317,7 +327,6 @@ export default function App() {
             user={user}
             crisi={result.crisi}
             initialPersona={chatPersona}
-            onHelp={() => setShowChatTutorial(true)}
           />
         )}
 

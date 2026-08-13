@@ -17,7 +17,7 @@ const APERTURE = [
   'Mi manca, anche se so che era giusto chiudere.',
 ];
 
-export default function Chat({ user, crisi, initialPersona = 'elena', onHelp }) {
+export default function Chat({ user, crisi, initialPersona = 'elena' }) {
   const [persona, setPersona] = useState(initialPersona);
   const [messages, setMessages] = useState(() => loadChat(user, initialPersona) || []);
   const [profile, setProfile] = useState(() => loadMemoryProfile(user, initialPersona));
@@ -187,11 +187,6 @@ export default function Chat({ user, crisi, initialPersona = 'elena', onHelp }) 
         <button type="button" className="ghost small mem-btn" onClick={saveMemoryNow} title="Aggiorna ciò che l'assistente ricorda di te">
           💾 Salva memoria
         </button>
-        {onHelp && (
-          <button type="button" className="ghost small tut-help" onClick={onHelp} title="Come funziona la chat">
-            Come funziona?
-          </button>
-        )}
         </div>
         <p className="persona-tone">{PERSONAS[persona].tone}</p>
         <p className="ai-note">
