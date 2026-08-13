@@ -440,6 +440,22 @@ button { font-family: inherit; }
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 14px 16px; box-shadow: var(--shadow);
   display: flex; flex-direction: column; gap: 12px;
+  cursor: pointer; user-select: none;
+}
+.streak-box:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.streak-wrap { position: relative; flex: 0 0 auto; }
+.streak-edit {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+  width: min(240px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; box-shadow: var(--shadow); animation: popIn .16s ease-out;
+}
+.streak-edit p { margin: 0 0 10px; font-size: 14px; color: var(--ink); }
+.streak-edit-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.streak-edit-opts .opt { text-align: center; }
+@media (max-width: 640px) {
+  .streak-box { width: 100%; }
+  .streak-edit { right: 0; left: auto; }
 }
 .streak-stat { display: flex; align-items: center; gap: 12px; }
 .streak-emoji { font-size: 26px; line-height: 1; }
@@ -448,9 +464,6 @@ button { font-family: inherit; }
 .streak-goal { height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
 .streak-goal-fill { height: 100%; background: var(--grad); border-radius: 8px; transition: width .45s ease; }
 @media (prefers-reduced-motion: reduce) { .streak-goal-fill { transition: none; } }
-@media (max-width: 640px) {
-  .streak-box { width: 100%; }
-}
 
 /* Popup di emergenza (autolesionismo) */
 .emergency-overlay {

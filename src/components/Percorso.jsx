@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CRISI } from '../lib/pathway.js';
 import { PERSONAS } from '../data/personas.js';
-import { loadProgress, saveProgress, loadObjective, computeStreak } from '../lib/storage.js';
+import { loadProgress, saveProgress, loadObjective, saveObjective, computeStreak } from '../lib/storage.js';
 import { MascotBubble } from './Mascot.jsx';
 
 // Cuorino "giudica" i progressi: messaggi a copione, veloci e offline.
@@ -85,10 +85,17 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
 
   const doneOf = (m) => (progress[m.id] ? Object.keys(progress[m.id]).length : 0);
 
-  // Obiettivo scelto dall'utente e streak di giorni consecutivi con esercizi.
-  const obiettivo = loadObjective(user);
+  // Obiettivo scelto dall'utente (modificabile) e streak di giorni consecutivi.
+  const [obiettivo, setObiettivo] = useState(() => loadObjective(user));
+  const [editObj, setEditObj] = useState(false);
   const streak = computeStreak(user);
   const pctObiettivo = obiettivo ? Math.min(100, Math.round((streak / obiettivo) * 100)) : 0;
+
+  const changeObjective = (n) => {
+    saveObjective(user, n);
+    setObiettivo(n);
+    setEditObj(false);
+  };
 
   // Conteggi globali per la "metro di guarigione"
   let totAtt = 0;
@@ -116,29 +123,60 @@ export default function Percorso({ user, result, onChat, onChatWith, onRedo, onR
             </button>
           )}
         </div>
-        <div
-          className="streak-box"
-          title={`Obiettivo: ${obiettivo ? obiettivo + ' giorni' : 'da impostare'} · Streak: ${streak} giorni`}
-        >
-          <div className="streak-stat">
-            <span className="streak-emoji" aria-hidden="true">🔥</span>
-            <div>
-              <strong>{streak}</strong>
-              <small>{streak === 1 ? 'giorno di fila' : 'giorni di fila'}</small>
+        <div className="streak-wrap">
+          <div
+            className="streak-box"
+            role="button"
+            tabIndex={0}
+            title="Tocca per cambiare il tuo obiettivo"
+            onClick={() => setEditObj((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setEditObj((v) => !v);
+              }
+            }}
+          >
+            <div className="streak-stat">
+              <span className="streak-emoji" aria-hidden="true">🔥</span>
+              <div>
+                <strong>{streak}</strong>
+                <small>{streak === 1 ? 'giorno di fila' : 'giorni di fila'}</small>
+              </div>
             </div>
+            <div className="streak-stat">
+              <span className="streak-emoji" aria-hidden="true">🎯</span>
+              <div>
+                <strong>{obiettivo ? `${obiettivo} giorni` : '—'}</strong>
+                <small>obiettivo · ✎ tocca per cambiare</small>
+              </div>
+            </div>
+            {obiettivo ? (
+              <div className="streak-goal" title={`${pctObiettivo}% dell'obiettivo`}>
+                <div className="streak-goal-fill" style={{ width: `${pctObiettivo}%` }} />
+              </div>
+            ) : null}
           </div>
-          <div className="streak-stat">
-            <span className="streak-emoji" aria-hidden="true">🎯</span>
-            <div>
-              <strong>{obiettivo ? `${obiettivo} giorni` : '—'}</strong>
-              <small>obiettivo che ti sei dato/a</small>
+          {editObj && (
+            <div className="streak-edit" role="menu" aria-label="Cambia obiettivo">
+              <p>Vuoi cambiare il tuo obiettivo?</p>
+              <div className="streak-edit-opts">
+                {[5, 10, 30].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`opt ${obiettivo === n ? 'sel' : ''}`}
+                    onClick={() => changeObjective(n)}
+                  >
+                    {n === 5 ? '5 giorni' : n === 10 ? '10 giorni' : '1 mese'}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="ghost small" onClick={() => setEditObj(false)}>
+                Annulla
+              </button>
             </div>
-          </div>
-          {obiettivo ? (
-            <div className="streak-goal" title={`${pctObiettivo}% dell'obiettivo`}>
-              <div className="streak-goal-fill" style={{ width: `${pctObiettivo}%` }} />
-            </div>
-          ) : null}
+          )}
         </div>
       </div>
 
