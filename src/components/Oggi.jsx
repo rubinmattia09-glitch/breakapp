@@ -35,7 +35,7 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
 
   return (
     <section className="oggi">
-      <h2>I compiti di oggi</h2>
+      <h2>Le attività di oggi</h2>
       <p className="lead">
         Ogni giorno BREAKAPP ti propone attività diverse, scelte in base alle tue risposte. Piccoli
         passi, tutti i giorni.
@@ -46,7 +46,7 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily }) {
           ? 'Completa il questionario per sbloccare i compiti giornalieri.'
           : completato
             ? 'Tutto fatto per oggi. Sei grande!'
-            : 'Ecco i compiti di oggi. Fai quello che puoi, quando puoi.'}
+            : 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.'}
       </MascotBubble>
 
       <div className="daily-date">{key}</div>

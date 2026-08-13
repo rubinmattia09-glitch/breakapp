@@ -60,7 +60,7 @@ export default function Welcome({ todayDone, onDaily, onOggi }) {
           senti di nuovo intero/a. Un percorso fatto su misura, e qualcuno con cui parlare quando vuoi.
         </p>
         <button className="primary" onClick={todayDone ? onOggi : onDaily}>
-          {todayDone ? 'I compiti di oggi' : 'Come ti senti oggi?'}
+          {todayDone ? 'Le attività di oggi' : 'Come ti senti oggi?'}
         </button>
       </div>
 
