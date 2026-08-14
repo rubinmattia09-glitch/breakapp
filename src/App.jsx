@@ -9,6 +9,7 @@ import Oggi from './components/Oggi.jsx';
 import Tutorial, { CHAT_STEPS } from './components/Tutorial.jsx';
 import EmergencyPopup from './components/EmergencyPopup.jsx';
 import Respirazione from './components/Respirazione.jsx';
+import Movimento from './components/Movimento.jsx';
 import Bacheca from './components/Bacheca.jsx';
 import RatingPrompt from './components/RatingPrompt.jsx';
 import { DOMANDE, DOMANDA_OBIETTIVO } from './data/questionario.js';
@@ -71,6 +72,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [respiraBack, setRespiraBack] = useState('welcome');
   const [respiraPattern, setRespiraPattern] = useState(null);
+  const [movimentoBack, setMovimentoBack] = useState('welcome');
 
   // Battito "ultimo accesso": mentre l'utente è loggato, ogni minuto segnala
   // la sua presenza al server (così il proprietario può vedere chi è online).
@@ -204,6 +206,12 @@ export default function App() {
     setScreen('respirazione');
   };
 
+  // Apre "Movimento": circuito a corpo libero, ricordandosi da dove veniamo.
+  const openMovimento = () => {
+    setMovimentoBack(screen);
+    setScreen('movimento');
+  };
+
   return (
     <div className="app">
       <header className="topbar">
@@ -295,6 +303,15 @@ export default function App() {
                     Respirazione
                   </button>
                   <button
+                    className={screen === 'movimento' ? 'active' : ''}
+                    onClick={() => {
+                      openMovimento();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Movimento
+                  </button>
+                  <button
                     className={screen === 'bacheca' ? 'active' : ''}
                     onClick={() => {
                       setScreen('bacheca');
@@ -333,6 +350,7 @@ export default function App() {
             onDaily={() => setScreen('quiz-giornaliero')}
             onOggi={() => setScreen('oggi')}
             onRespira={openRespira}
+            onMovimento={openMovimento}
           />
         )}
 
@@ -393,6 +411,10 @@ export default function App() {
 
         {screen === 'respirazione' && (
           <Respirazione pattern={respiraPattern} onBack={() => setScreen(respiraBack)} />
+        )}
+
+        {screen === 'movimento' && (
+          <Movimento onBack={() => setScreen(movimentoBack)} />
         )}
 
         {screen === 'bacheca' && <Bacheca onBack={() => setScreen('welcome')} />}

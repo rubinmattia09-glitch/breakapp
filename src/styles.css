@@ -491,6 +491,32 @@ button { font-family: inherit; }
   font-size: 13px; color: var(--muted); line-height: 1.5;
 }
 
+/* Schermata "Movimento" (circuito a corpo libero) */
+.movimento { max-width: 680px; margin: 0 auto; }
+.movimento .lead { color: var(--muted); font-size: 14.5px; line-height: 1.6; margin: 10px auto 18px; max-width: 560px; text-align: center; }
+.voglia-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 4px 0 20px; }
+.chip.voglia { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; min-width: 116px; padding: 10px 12px; }
+.chip.voglia.on { background: var(--grad); color: #fff; border-color: transparent; }
+.voglia-emoji { font-size: 22px; line-height: 1; }
+.voglia-label { font-weight: 700; font-size: 14px; }
+.voglia-note { font-size: 11px; opacity: .85; }
+.diff-grid { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 8px 0 18px; }
+.diff-card { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 132px; padding: 20px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 16px; font-weight: 700; color: var(--brand-ink); transition: box-shadow .15s, transform .15s; }
+.diff-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.diff-emoji { font-size: 32px; }
+.diff-card.diff-facile { border-top: 4px solid #34a853; }
+.diff-card.diff-intermedio { border-top: 4px solid #f0a020; }
+.diff-card.diff-difficile { border-top: 4px solid #bd1f33; }
+.circuit-meta { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 6px 0 10px; }
+.pill { background: var(--soft); border: 1px solid var(--line); border-radius: 20px; padding: 5px 13px; font-size: 13px; color: var(--brand-ink); font-weight: 600; }
+.pill.diff-facile { background: #e8f6ec; color: #1f7a47; border-color: #bfe6cd; }
+.pill.diff-intermedio { background: #fff3e0; color: #a06a16; border-color: #f3d9a8; }
+.pill.diff-difficile { background: #fde8e8; color: #bd1f33; border-color: #f3c2c6; }
+.circuit-rule { text-align: center; color: var(--muted); font-size: 14px; margin: 0 auto 14px; max-width: 520px; line-height: 1.5; }
+.movimento h3 { color: var(--brand-ink); margin: 18px 0 8px; font-size: 16px; text-align: center; }
+.ex-list { max-width: 560px; margin: 0 auto 6px; padding-left: 22px; line-height: 1.55; color: var(--ink); }
+.ex-list li { margin: 6px 0; }
+
 /* Pulsante rapido "Respira" nella home e nel popup di emergenza */
 .hero-actions { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 18px; }
 
