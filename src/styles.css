@@ -618,3 +618,10 @@ button { font-family: inherit; }
   color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; padding: 6px;
 }
 .rating-later:hover { color: var(--ink); }
+
+/* Anti-zoom su mobile: iOS ingrandisce la pagina quando un campo ha font < 16px.
+   Con 16px su input/textarea su schermi piccoli lo zoom automatico non scatta più
+   (né nella schermata di accesso, né nella chat/diario). */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
