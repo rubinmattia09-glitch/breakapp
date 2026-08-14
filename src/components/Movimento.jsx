@@ -23,12 +23,16 @@ export default function Movimento({ onBack }) {
         <button className="ghost small" type="button" onClick={onBack}>
           ← Indietro
         </button>
-        <h2>Movimento di oggi</h2>
+        <h2>Mens sana in corpore sano</h2>
       </div>
+      <p className="screen-sub">Il movimento di oggi</p>
 
       <p className="lead">
-        Un circuito a corpo libero per attivare tutto il corpo, con riscaldamento e defaticamento.
-        Scegli quanta voglia hai oggi: il giro cambia di conseguenza. Nessun attrezzo, solo il tuo corpo.
+        <strong>Mente sana in corpo sano.</strong> Dopo una fine tendiamo a curare soprattutto la testa:
+        i pensieri, le emozioni, i «perché». Ma anche il corpo soffre e ha bisogno di attenzione.
+        Muoverti, anche poco, aiuta davvero: libera le endorfine, abbassa il cortisolo (l’ormone dello
+        stress), scioglie la tensione e fa dormire meglio. E ti restituisce un pezzo di controllo su te
+        stesso/a. Qui sotto scegli quanta voglia hai oggi e la difficoltà: nessun attrezzo, solo il tuo corpo.
       </p>
 
       <div className="voglia-row" role="group" aria-label="Quanta voglia hai oggi">
