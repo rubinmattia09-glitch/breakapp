@@ -304,6 +304,7 @@ button { font-family: inherit; }
 .oggi { max-width: 720px; margin: 0 auto; }
 .oggi .daily-date { font-size: 13px; color: var(--muted); margin: 6px 0 12px; letter-spacing: .3px; }
 .daily-tasks .daily-mod { display: block; font-size: 12px; color: var(--brand); margin: 2px 0 10px 34px; }
+.daily-tasks .daily-campo { color: var(--muted); font-weight: 600; }
 .daily-tasks .breath-shortcut {
   display: inline-flex; align-items: center; gap: 6px;
   margin: 0 0 12px 34px; border-color: var(--brand);

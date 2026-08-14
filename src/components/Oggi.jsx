@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PERSONAS } from '../data/personas.js';
 import { MascotBubble } from './Mascot.jsx';
 import { MOTIVATIONAL } from '../data/motivational.js';
-import { dailyTasksFor, loadDaily, saveDaily, dateKey } from '../lib/dailytasks.js';
+import { dailyTasksFor, loadDaily, saveDaily, dateKey, DAILY_REQUIRED } from '../lib/dailytasks.js';
 import { parseBreathing } from '../lib/breathing.js';
 
 // Schermata "Oggi": mostra i compiti del giorno (calcolati dal percorso) e
@@ -22,6 +22,8 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
     saveDaily(user, key, { ...obj, done });
   }, [done, user, key]);
 
+  const required = Math.min(DAILY_REQUIRED, tasks.length);
+
   const toggle = (id) => {
     const wasOn = !!done[id];
     const n = { ...done };
@@ -30,8 +32,10 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
     setDone(n);
     if (!wasOn) {
       const nextFatti = tasks.filter((t) => n[t.id]).length;
-      if (tasks.length > 0 && nextFatti === tasks.length) {
+      if (tasks.length > 0 && nextFatti >= required && nextFatti === tasks.length) {
         setMascot({ text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' });
+      } else if (tasks.length > 0 && nextFatti >= required) {
+        setMascot({ text: 'Bravo/a! Hai fatto il minimo di oggi. Puoi continuare se vuoi.', mood: 'cheer' });
       } else {
         const pick = MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)];
         setMascot({ text: pick.text, mood: pick.mood || 'happy' });
@@ -43,7 +47,7 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
 
   const fatti = tasks.filter((t) => done[t.id]).length;
   const personaConsigliato = tasks.length ? tasks[0].persona : 'elena';
-  const completato = tasks.length > 0 && fatti === tasks.length;
+  const completato = tasks.length > 0 && fatti >= required;
 
   // Cuorino commenta le attività del giorno con frasi motivazionali.
   const [mascot, setMascot] = useState(() => {
@@ -51,15 +55,16 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
       return { text: 'Completa il questionario per sbloccare i compiti giornalieri.', mood: 'happy' };
     if (completato)
       return { text: 'Tutto fatto per oggi. Sei grande!', mood: 'cheer' };
-    return { text: 'Ecco le attività di oggi. Fai quello che puoi, quando puoi.', mood: 'happy' };
+    return { text: 'Ecco 5 attività per oggi: ne fai 3 e hai chiuso, ma puoi farne anche di più.', mood: 'happy' };
   });
 
   return (
     <section className="oggi">
       <h2>Le attività di oggi</h2>
       <p className="lead">
-        Ogni giorno BREAKAPP ti propone attività diverse, scelte in base alle tue risposte. Piccoli
-        passi, tutti i giorni.
+        Ogni giorno BREAKAPP ti propone <strong>5 attività</strong> diverse, scelte in base alle tue
+        risposte e che toccano aree diverse (corpo, mente, relazioni…). Ne bastano <strong>3</strong>{' '}
+        per chiudere la giornata, ma sei libero/a di farne di più. Piccoli passi, tutti i giorni.
       </p>
 
       <MascotBubble mood={mascot.mood} size={64}>
@@ -94,7 +99,10 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
                   <span className="tick" aria-hidden="true" />
                   <span className="txt">{t.text}</span>
                 </label>
-                <span className="daily-mod">{t.modulo}</span>
+                <span className="daily-mod">
+                  {t.modulo}
+                  {t.campo && <span className="daily-campo"> · {t.campo}</span>}
+                </span>
                 {breath && onRespira && (
                   <button
                     type="button"
@@ -112,7 +120,7 @@ export default function Oggi({ user, result, todayKey, onChatWith, onDaily, onRe
 
       <div className="daily-foot">
         <span>
-          {fatti}/{tasks.length} fatti oggi
+          {fatti}/{tasks.length} attività · minimo {required}
         </span>
         {tasks.length > 0 && (
           <button className="ghost small" onClick={() => onChatWith(personaConsigliato)}>
