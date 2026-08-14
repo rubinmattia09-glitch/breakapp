@@ -576,3 +576,45 @@ button { font-family: inherit; }
 .emergency-foot { font-size: 13px; color: var(--muted); }
 .emergency-foot strong { color: var(--warn-ink); }
 .emergency-popup .primary { width: 100%; margin-top: 6px; }
+
+/* ===== Valutazione a stelle (popup "appena entri") ===== */
+.rating-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(45, 26, 32, 0.42); backdrop-filter: blur(2px); padding: 16px;
+}
+.rating-card {
+  position: relative; width: 100%; max-width: 380px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 24px 22px 18px; text-align: center;
+  animation: ratingPop 0.22s ease-out;
+}
+@keyframes ratingPop { from { transform: translateY(10px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.rating-card h3 { margin: 2px 0 4px; color: var(--brand-ink); font-size: 20px; }
+.rating-sub { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+.rating-x {
+  position: absolute; top: 8px; right: 10px; border: 0; background: transparent;
+  font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer;
+}
+.rating-x:hover { color: var(--ink); }
+.stars { display: flex; justify-content: center; gap: 4px; margin: 6px 0 10px; }
+.star {
+  border: 0; background: transparent; padding: 2px; cursor: pointer; line-height: 1;
+  transition: transform 0.1s ease;
+}
+.star:hover:not(:disabled) { transform: scale(1.15); }
+.star:disabled { cursor: default; }
+.rating-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.rating-zero {
+  border: 0; background: transparent; color: var(--muted); font-size: 13px; cursor: pointer;
+  text-decoration: underline; padding: 4px;
+}
+.rating-zero:hover { color: var(--ink); }
+.rating-val { font-weight: 700; color: var(--brand-ink); font-size: 16px; }
+.rating-msg { color: var(--warn-ink); font-size: 13px; margin: 6px 0; }
+.rating-card .primary { width: 100%; margin-top: 4px; }
+.rating-later {
+  display: block; width: 100%; margin-top: 8px; border: 0; background: transparent;
+  color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; padding: 6px;
+}
+.rating-later:hover { color: var(--ink); }

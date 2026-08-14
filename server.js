@@ -70,6 +70,16 @@ function llmConfig() {
 const DB_PATH = process.env.SQLITE_DB || path.join(__dirname, 'data', 'app.db');
 const TURSO_URL = process.env.TURSO_DATABASE_URL || '';
 const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || '';
+// Giorno della campagna di valutazione: la valutazione è aperta SOLO in questo
+// giorno e una volta sola per utente. Cambia RATING_DAY (es. su Render) per
+// aprire una nuova campagna in un'altra data.
+const RATING_DAY = (process.env.RATING_DAY || '2026-08-14').trim();
+function todayUTC() {
+  return new Date().toISOString().slice(0, 10);
+}
+function ratingOpen() {
+  return todayUTC() === RATING_DAY;
+}
 let db = null; // DatabaseSync (file) o client libSQL
 let dbBackend = 'none'; // 'turso' | 'sqlite' | 'memory'
 let memUsers = null; // fallback in memoria
@@ -87,6 +97,13 @@ const POSTS_SCHEMA = `CREATE TABLE IF NOT EXISTS posts (
   body         TEXT NOT NULL,
   created_at   TEXT NOT NULL,
   delete_token TEXT
+)`;
+
+const RATINGS_SCHEMA = `CREATE TABLE IF NOT EXISTS ratings (
+  username    TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  rating      INTEGER NOT NULL,
+  created_at  TEXT NOT NULL
 )`;
 
 // Le tabelle già esistenti (es. su Turso) non hanno delete_token: lo aggiungiamo
@@ -119,6 +136,7 @@ async function initDb() {
       db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
       await db.execute(USERS_SCHEMA);
       await db.execute(POSTS_SCHEMA);
+      await db.execute(RATINGS_SCHEMA);
       dbBackend = 'turso';
       console.log('Database: Turso (' + TURSO_URL + ')');
       return;
@@ -138,6 +156,7 @@ async function initDb() {
     db = new DatabaseSync(DB_PATH);
     db.exec(USERS_SCHEMA);
     db.exec(POSTS_SCHEMA);
+    db.exec(RATINGS_SCHEMA);
     dbBackend = 'sqlite';
     console.log('Database: SQLite locale (' + DB_PATH + ')');
     return;
@@ -240,6 +259,45 @@ async function dbRun(sql, args = []) {
   } else if (dbBackend === 'sqlite') {
     db.prepare(sql).run(...args);
   }
+}
+
+// --- Valutazioni (0-5 stelle): una per utente, solo nel giorno della campagna ---
+async function dbRatingExists(username) {
+  if (dbBackend === 'turso') {
+    const r = await db.execute({ sql: 'SELECT 1 FROM ratings WHERE username = ?', args: [username] });
+    return r.rows.length > 0;
+  }
+  if (dbBackend === 'sqlite') {
+    return !!db.prepare('SELECT 1 FROM ratings WHERE username = ?').get(username);
+  }
+  return false;
+}
+
+async function dbSubmitRating({ username, name, rating }) {
+  const created = new Date().toISOString();
+  if (dbBackend === 'turso') {
+    await db.execute({
+      sql: 'INSERT INTO ratings (username, name, rating, created_at) VALUES (?, ?, ?, ?)',
+      args: [username, name, rating, created],
+    });
+  } else if (dbBackend === 'sqlite') {
+    db.prepare('INSERT INTO ratings (username, name, rating, created_at) VALUES (?, ?, ?, ?)').run(
+      username, name, rating, created
+    );
+  }
+}
+
+async function dbAllRatings() {
+  if (dbBackend === 'turso') {
+    const r = await db.execute(
+      'SELECT username, name, rating, created_at FROM ratings ORDER BY created_at DESC'
+    );
+    return r.rows;
+  }
+  if (dbBackend === 'sqlite') {
+    return db.prepare('SELECT username, name, rating, created_at FROM ratings ORDER BY created_at DESC').all();
+  }
+  return [];
 }
 
 // Inserisce un post e ritorna l'id appena creato (o null in modalità memoria).
@@ -536,6 +594,131 @@ async function handleBoardDelete(req, res) {
   }
 }
 
+// --- /api/rating/status : dice al frontend se può valutare e se l'ha già fatto ---
+async function handleRatingStatus(req, res) {
+  const u = new URL(req.url, 'http://localhost').searchParams.get('username') || '';
+  const open = ratingOpen();
+  let already = false;
+  if (open && u) {
+    try { already = await dbRatingExists(u); } catch { /* ignora */ }
+  }
+  sendJson(res, 200, { open, alreadyRated: already, day: RATING_DAY });
+}
+
+// --- /api/rating : salva la valutazione (una volta, solo oggi) ---
+async function handleRatingSubmit(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try { p = await readJson(req); } catch (e) { return sendJson(res, 400, { error: e.message }); }
+  if (!ratingOpen()) {
+    return sendJson(res, 403, { ok: false, error: 'La valutazione è aperta solo il ' + RATING_DAY + '.' });
+  }
+  const username = (p.username || '').trim();
+  const rating = Number(p.rating);
+  if (!username) return sendJson(res, 400, { ok: false, error: 'Utente mancante.' });
+  if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
+    return sendJson(res, 400, {
+      ok: false,
+      error: 'La valutazione deve essere un numero intero da 0 a 5.',
+    });
+  }
+  try {
+    if (await dbRatingExists(username)) {
+      return sendJson(res, 409, { ok: false, error: 'Hai già inviato la tua valutazione.' });
+    }
+    let name = username;
+    try {
+      const nr = await dbAll('SELECT name FROM users WHERE username = ?', [username]);
+      if (nr.length) name = nr[0].name || username;
+    } catch { /* ignora */ }
+    await dbSubmitRating({ username, name, rating });
+    sendJson(res, 200, { ok: true });
+  } catch (e) {
+    sendJson(res, 500, {
+      ok: false,
+      error: 'Impossibile salvare la valutazione: ' + (e && e.message ? e.message : e),
+    });
+  }
+}
+
+// --- /api/ratings : elenco JSON (per il proprietario) ---
+async function handleRatingsList(res) {
+  try {
+    const rows = await dbAllRatings();
+    sendJson(res, 200, { ratings: rows, day: RATING_DAY });
+  } catch (e) {
+    sendJson(res, 500, {
+      error: 'Impossibile leggere le valutazioni: ' + (e && e.message ? e.message : e),
+    });
+  }
+}
+
+// --- /ratings : pagina HTML leggibile dal proprietario (username + nome + voto) ---
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function renderRatingsHtml(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const total = list.length;
+  const sum = list.reduce((a, r) => a + (Number(r.rating) || 0), 0);
+  const avg = total ? (sum / total).toFixed(2) : '—';
+  const body = list.length
+    ? list
+        .map(
+          (r) =>
+            `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.name)}</td>` +
+            `<td><strong>${Number(r.rating)}</strong> / 5</td><td>${escapeHtml(r.created_at)}</td></tr>`
+        )
+        .join('')
+    : '<tr><td colspan="4" style="text-align:center">Nessuna valutazione ancora inviata.</td></tr>';
+  return `<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valutazioni BREAKAPP</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial,sans-serif;background:#fff5f6;color:#222;margin:0;padding:24px}
+  .box{background:#fff;border:1px solid #f0d2d6;border-radius:12px;padding:16px 20px;max-width:780px;margin:0 auto;box-shadow:0 6px 20px rgba(189,31,51,.08)}
+  h1{color:#bd1f33;margin-top:6px}
+  .stat{display:flex;gap:16px;margin:8px 0 16px;flex-wrap:wrap}
+  .stat div{background:#fdeef0;border-radius:10px;padding:10px 16px}
+  .stat b{display:block;font-size:22px;color:#bd1f33}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #f1e2e4}
+  th{color:#8a5560;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  .foot{margin-top:14px;font-size:12px;color:#a07}
+</style></head>
+<body><div class="box">
+  <h1>&#11088; Valutazioni BREAKAPP</h1>
+  <p>Campagna del <strong>${escapeHtml(RATING_DAY)}</strong> &mdash; una valutazione per persona.</p>
+  <div class="stat">
+    <div>Valutazioni<b>${total}</b></div>
+    <div>Media<b>${avg}</b></div>
+  </div>
+  <table><thead><tr><th>Username</th><th>Nome</th><th>Voto</th><th>Data</th></tr></thead>
+  <tbody>${body}</tbody></table>
+  <p class="foot">Pagina riservata al proprietario dell'app.</p>
+</div></body></html>`;
+}
+async function handleRatingsPage(res) {
+  try {
+    const rows = await dbAllRatings();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end(renderRatingsHtml(rows));
+  } catch (e) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end('<p>Errore: ' + escapeHtml(e && e.message ? e.message : e) + '</p>');
+  }
+}
+
 // --- /api/health : stato del server (non espone la chiave) ---
 function handleHealth(res) {
   const { apiKey, base, model } = llmConfig();
@@ -628,6 +811,10 @@ const server = http.createServer((req, res) => {
     res.end('Method Not Allowed');
     return;
   }
+  if (pathname === '/api/rating/status') return handleRatingStatus(req, res);
+  if (pathname === '/api/rating') return handleRatingSubmit(req, res);
+  if (pathname === '/api/ratings') return handleRatingsList(res);
+  if (pathname === '/ratings') return handleRatingsPage(res);
   if (pathname.startsWith('/api/')) {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
