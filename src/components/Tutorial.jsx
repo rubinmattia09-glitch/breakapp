@@ -178,11 +178,12 @@ export default function Tutorial({ steps = PERCORSO_STEPS, onClose }) {
           </span>
           <div>
             <button
-              className="ghost small"
+              className="ghost small back-arrow"
               onClick={() => setStep((s) => Math.max(0, s - 1))}
               disabled={step === 0}
+              aria-label="Torna indietro"
             >
-              Indietro
+              ←
             </button>
             {last ? (
               <button className="primary small" onClick={onClose}>

@@ -82,8 +82,8 @@ export default function Questionario({ domande, title, cta = 'Crea il mio percor
 
       <div className="actions">
         {onBack && (
-          <button className="ghost" onClick={onBack}>
-            Indietro
+          <button className="ghost back-arrow" onClick={onBack} aria-label="Torna indietro">
+            ←
           </button>
         )}
         <button className="primary" disabled={!answered} onClick={next}>

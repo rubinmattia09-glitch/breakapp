@@ -152,8 +152,8 @@ export default function Bacheca({ onBack }) {
   return (
     <section className="bacheca">
       <div className="resp-head">
-        <button className="ghost small" type="button" onClick={onBack}>
-          ← Indietro
+        <button className="ghost small back-arrow" type="button" onClick={onBack} aria-label="Torna indietro">
+          ←
         </button>
         <h2>Bacheca dei pensieri</h2>
       </div>

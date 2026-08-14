@@ -20,8 +20,8 @@ export default function Movimento({ onBack }) {
   return (
     <section className="movimento">
       <div className="resp-head">
-        <button className="ghost small" type="button" onClick={onBack}>
-          ← Indietro
+        <button className="ghost small back-arrow" type="button" onClick={onBack} aria-label="Torna indietro">
+          ←
         </button>
         <h2>Mens sana in corpore sano</h2>
       </div>
