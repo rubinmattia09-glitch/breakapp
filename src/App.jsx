@@ -309,7 +309,7 @@ export default function App() {
                       setMenuOpen(false);
                     }}
                   >
-                    Mens sana in corpore sano
+                    Muoviti un po'
                   </button>
                   <button
                     className={screen === 'bacheca' ? 'active' : ''}
