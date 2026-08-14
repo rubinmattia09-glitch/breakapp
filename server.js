@@ -106,6 +106,11 @@ const RATINGS_SCHEMA = `CREATE TABLE IF NOT EXISTS ratings (
   created_at  TEXT NOT NULL
 )`;
 
+const PRESENCE_SCHEMA = `CREATE TABLE IF NOT EXISTS presence (
+  username   TEXT PRIMARY KEY,
+  last_seen  TEXT NOT NULL
+)`;
+
 // Le tabelle già esistenti (es. su Turso) non hanno delete_token: lo aggiungiamo
 // in modo sicuro se manca, così gli autori possono ritirare i propri pensieri.
 async function ensurePostsDeleteToken() {
@@ -137,6 +142,7 @@ async function initDb() {
       await db.execute(USERS_SCHEMA);
       await db.execute(POSTS_SCHEMA);
       await db.execute(RATINGS_SCHEMA);
+      await db.execute(PRESENCE_SCHEMA);
       dbBackend = 'turso';
       console.log('Database: Turso (' + TURSO_URL + ')');
       return;
@@ -157,6 +163,7 @@ async function initDb() {
     db.exec(USERS_SCHEMA);
     db.exec(POSTS_SCHEMA);
     db.exec(RATINGS_SCHEMA);
+    db.exec(PRESENCE_SCHEMA);
     dbBackend = 'sqlite';
     console.log('Database: SQLite locale (' + DB_PATH + ')');
     return;
@@ -296,6 +303,40 @@ async function dbAllRatings() {
   }
   if (dbBackend === 'sqlite') {
     return db.prepare('SELECT username, name, rating, created_at FROM ratings ORDER BY created_at DESC').all();
+  }
+  return [];
+}
+
+// --- Presenza / ultimo accesso ---
+const ONLINE_MS = 3 * 60 * 1000; // entro 3 min dall'ultimo battito = "online"
+function isOnlineWithin(ts, ms = ONLINE_MS) {
+  const t = new Date(ts).getTime();
+  if (isNaN(t)) return false;
+  return Date.now() - t < ms;
+}
+async function dbTouchPresence(username) {
+  const now = new Date().toISOString();
+  if (dbBackend === 'turso') {
+    await db.execute({
+      sql: 'INSERT INTO presence (username, last_seen) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET last_seen = excluded.last_seen',
+      args: [username, now],
+    });
+  } else if (dbBackend === 'sqlite') {
+    db.prepare(
+      'INSERT INTO presence (username, last_seen) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET last_seen = excluded.last_seen'
+    ).run(username, now);
+  }
+}
+async function dbAllPresence() {
+  const sql = `SELECT p.username AS username, COALESCE(u.name, p.username) AS name, p.last_seen AS last_seen
+               FROM presence p LEFT JOIN users u ON u.username = p.username
+               ORDER BY p.last_seen DESC`;
+  if (dbBackend === 'turso') {
+    const r = await db.execute(sql);
+    return r.rows;
+  }
+  if (dbBackend === 'sqlite') {
+    return db.prepare(sql).all();
   }
   return [];
 }
@@ -719,6 +760,100 @@ async function handleRatingsPage(res) {
   }
 }
 
+// --- /api/ping : heartbeat "ultimo accesso" (l'app è aperta) ---
+async function handlePing(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+  let p;
+  try { p = await readJson(req); } catch (e) { return sendJson(res, 400, { error: e.message }); }
+  const username = (p.username || '').trim();
+  if (!username) return sendJson(res, 400, { ok: false, error: 'Utente mancante.' });
+  try {
+    await dbTouchPresence(username);
+    sendJson(res, 200, { ok: true });
+  } catch (e) {
+    sendJson(res, 500, {
+      ok: false,
+      error: 'Impossibile aggiornare la presenza: ' + (e && e.message ? e.message : e),
+    });
+  }
+}
+
+// --- /api/presence : elenco JSON (per il proprietario) ---
+async function handlePresenceList(res) {
+  try {
+    const rows = await dbAllPresence();
+    const presence = rows.map((r) => ({ ...r, online: isOnlineWithin(r.last_seen) }));
+    sendJson(res, 200, { presence });
+  } catch (e) {
+    sendJson(res, 500, {
+      error: 'Impossibile leggere la presenza: ' + (e && e.message ? e.message : e),
+    });
+  }
+}
+
+// --- /presence : pagina HTML leggibile dal proprietario (ultimo accesso) ---
+function fmtIt(ts) {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return String(ts || '');
+  return d.toLocaleString('it-IT', {
+    timeZone: 'Europe/Rome',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+function renderPresenceHtml(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const onlineNow = list.filter((r) => isOnlineWithin(r.last_seen)).length;
+  const body = list.length
+    ? list
+        .map((r) => {
+          const on = isOnlineWithin(r.last_seen);
+          const dot = on ? '#3a9e6f' : '#c4b9bd';
+          const stato = on ? 'Online ora' : 'Visto il ' + fmtIt(r.last_seen);
+          return `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.name)}</td>` +
+            `<td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-right:7px"></span>${stato}</td></tr>`;
+        })
+        .join('')
+    : '<tr><td colspan="3" style="text-align:center">Nessun accesso registrato.</td></tr>';
+  return `<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presenza BREAKAPP</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial,sans-serif;background:#fff5f6;color:#222;margin:0;padding:24px}
+  .box{background:#fff;border:1px solid #f0d2d6;border-radius:12px;padding:16px 20px;max-width:780px;margin:0 auto;box-shadow:0 6px 20px rgba(189,31,51,.08)}
+  h1{color:#bd1f33;margin-top:6px}
+  .stat{background:#fdeef0;border-radius:10px;padding:10px 16px;display:inline-block;margin:8px 0 16px}
+  .stat b{display:block;font-size:22px;color:#bd1f33}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #f1e2e4}
+  th{color:#8a5560;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  .foot{margin-top:14px;font-size:12px;color:#a07}
+</style></head>
+<body><div class="box">
+  <h1>&#128308; Presenza BREAKAPP</h1>
+  <p>Quando un utente apre l'app, questa segnala il passaggio (ogni minuto) per mostrarti l'ultimo accesso.</p>
+  <div class="stat">Online ora<b>${onlineNow}</b></div>
+  <table><thead><tr><th>Username</th><th>Nome</th><th>Stato</th></tr></thead>
+  <tbody>${body}</tbody></table>
+  <p class="foot">Pagina riservata al proprietario dell'app.</p>
+</div></body></html>`;
+}
+async function handlePresencePage(res) {
+  try {
+    const rows = await dbAllPresence();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end(renderPresenceHtml(rows));
+  } catch (e) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end('<p>Errore: ' + escapeHtml(e && e.message ? e.message : e) + '</p>');
+  }
+}
+
 // --- /api/health : stato del server (non espone la chiave) ---
 function handleHealth(res) {
   const { apiKey, base, model } = llmConfig();
@@ -815,6 +950,9 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/rating') return handleRatingSubmit(req, res);
   if (pathname === '/api/ratings') return handleRatingsList(res);
   if (pathname === '/ratings') return handleRatingsPage(res);
+  if (pathname === '/api/ping') return handlePing(req, res);
+  if (pathname === '/api/presence') return handlePresenceList(res);
+  if (pathname === '/presence') return handlePresencePage(res);
   if (pathname.startsWith('/api/')) {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

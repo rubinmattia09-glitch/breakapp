@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Welcome from './components/Welcome.jsx';
 import Auth from './components/Auth.jsx';
 import Questionario from './components/Questionario.jsx';
@@ -71,6 +71,32 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [respiraBack, setRespiraBack] = useState('welcome');
   const [respiraPattern, setRespiraPattern] = useState(null);
+
+  // Battito "ultimo accesso": mentre l'utente è loggato, ogni minuto segnala
+  // la sua presenza al server (così il proprietario può vedere chi è online).
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const ping = () => {
+      if (!alive) return;
+      fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user }),
+      }).catch(() => {});
+    };
+    ping();
+    const id = setInterval(ping, 60000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') ping();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [user]);
 
   const todayKey = dateKey(new Date());
   const todayDone = user ? isTodayQuestionnaireDone(user, todayKey) : true;
